@@ -1,0 +1,6 @@
+@Payflow.Fraud.Api_HostAddress = http://localhost:5277
+
+GET {{Payflow.Fraud.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

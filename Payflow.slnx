@@ -10,11 +10,23 @@
     <Project Path="src/Services/Authorization/Payflow.Authorization.Domain/Payflow.Authorization.Domain.csproj" />
     <Project Path="src/Services/Authorization/Payflow.Authorization.Infrastructure/Payflow.Authorization.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Fraud/">
+    <Project Path="src/Services/Fraud/Payflow.Fraud.Api/Payflow.Fraud.Api.csproj" />
+    <Project Path="src/Services/Fraud/Payflow.Fraud.Application/Payflow.Fraud.Application.csproj" />
+    <Project Path="src/Services/Fraud/Payflow.Fraud.Domain/Payflow.Fraud.Domain.csproj" />
+    <Project Path="src/Services/Fraud/Payflow.Fraud.Infrastructure/Payflow.Fraud.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Ledger/">
     <Project Path="src/Services/Ledger/Payflow.Ledger.Api/Payflow.Ledger.Api.csproj" />
     <Project Path="src/Services/Ledger/Payflow.Ledger.Application/Payflow.Ledger.Application.csproj" />
     <Project Path="src/Services/Ledger/Payflow.Ledger.Domain/Payflow.Ledger.Domain.csproj" />
     <Project Path="src/Services/Ledger/Payflow.Ledger.Infrastructure/Payflow.Ledger.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Notifications/">
+    <Project Path="src/Services/Notifications/Payflow.Notifications.Api/Payflow.Notifications.Api.csproj" />
+    <Project Path="src/Services/Notifications/Payflow.Notifications.Application/Payflow.Notifications.Application.csproj" />
+    <Project Path="src/Services/Notifications/Payflow.Notifications.Domain/Payflow.Notifications.Domain.csproj" />
+    <Project Path="src/Services/Notifications/Payflow.Notifications.Infrastructure/Payflow.Notifications.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Services/Payments/">
     <Project Path="src/Services/Payments/Payflow.Payments.Api/Payflow.Payments.Api.csproj" />
@@ -30,7 +42,9 @@
   <Folder Name="/tests/" />
   <Folder Name="/tests/UnitTests/">
     <Project Path="tests/UnitTests/Payflow.Authorization.UnitTests/Payflow.Authorization.UnitTests.csproj" />
+    <Project Path="tests/UnitTests/Payflow.Fraud.UnitTests/Payflow.Fraud.UnitTests.csproj" />
     <Project Path="tests/UnitTests/Payflow.Ledger.UnitTests/Payflow.Ledger.UnitTests.csproj" />
+    <Project Path="tests/UnitTests/Payflow.Notifications.UnitTests/Payflow.Notifications.UnitTests.csproj" />
     <Project Path="tests/UnitTests/Payflow.Payments.UnitTests/Payflow.Payments.UnitTests.csproj" />
   </Folder>
 </Solution>

@@ -4,7 +4,7 @@ Date: 2026-08-21
 
 ## Status
 
-Accepted — superseded by a saga in Phase 2 (not yet implemented)
+Superseded by [ADR-0005](0005-saga-orchestration-and-outbox.md), which implements the fix described below.
 
 ## Context
 

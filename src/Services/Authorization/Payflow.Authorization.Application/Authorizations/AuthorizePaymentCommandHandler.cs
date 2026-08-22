@@ -5,7 +5,7 @@ using Payflow.Shared.Kernel;
 
 namespace Payflow.Authorization.Application.Authorizations;
 
-public sealed class AuthorizePaymentCommandHandler(IAuthorizationStore store)
+public sealed class AuthorizePaymentCommandHandler(IAuthorizationStore store, IUnitOfWork unitOfWork)
     : IRequestHandler<AuthorizePaymentCommand, Result<AuthorizationResult>>
 {
     public async Task<Result<AuthorizationResult>> Handle(AuthorizePaymentCommand request, CancellationToken cancellationToken)
@@ -22,6 +22,18 @@ public sealed class AuthorizePaymentCommandHandler(IAuthorizationStore store)
             : AuthorizationAttempt.Decline(request.PaymentId, declineReason!, processorReference);
 
         await store.SaveAsync(attempt, cancellationToken);
+
+        try
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (AuthorizationConflictException)
+        {
+            var winner = await store.FindByPaymentIdAsync(request.PaymentId, cancellationToken)
+                ?? throw new InvalidOperationException("Lost an authorization race but the winning record is missing.");
+            return Result.Success(ToResult(winner));
+        }
+
         return Result.Success(ToResult(attempt));
     }
 

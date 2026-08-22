@@ -1,92 +1,95 @@
 using System.Text.Json;
+using MassTransit;
 using MediatR;
 using Payflow.Payments.Application.Abstractions;
 using Payflow.Payments.Domain;
-using Payflow.Shared.Contracts.Authorization;
-using Payflow.Shared.Contracts.Ledger;
+using Payflow.Shared.Contracts.Messages;
 using Payflow.Shared.Kernel;
 
 namespace Payflow.Payments.Application.Payments;
 
 /// <summary>
-/// Orchestrates a single payment attempt: idempotency dedup, authorization, and ledger posting.
-/// This is a synchronous, in-process orchestration for Phase 1. Phase 2 lifts the same steps into
-/// a MassTransit saga so a crash between steps doesn't leave the payment stuck — see ADR-0002.
+/// Starts the payment saga and presents it synchronously to the caller when possible. Idempotency
+/// dedup and the (merchant, key) race handling are unchanged from Phase 1; what changed is how the
+/// actual authorize/capture work happens — see <see cref="Saga.PaymentSagaStateMachine"/>, ADR-0002,
+/// and ADR-0006 for the request/response bridge this handler implements.
 /// </summary>
 public sealed class SubmitPaymentCommandHandler(
     IPaymentRepository payments,
     IIdempotencyStore idempotencyStore,
-    IAuthorizationClient authorizationClient,
-    ILedgerClient ledgerClient,
-    IUnitOfWork unitOfWork)
-    : IRequestHandler<SubmitPaymentCommand, Result<PaymentResponse>>
+    IUnitOfWork unitOfWork,
+    IRequestClient<ProcessPayment> requestClient)
+    : IRequestHandler<SubmitPaymentCommand, Result<SubmitPaymentOutcome>>
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly TimeSpan SagaResponseTimeout = TimeSpan.FromSeconds(10);
 
-    public async Task<Result<PaymentResponse>> Handle(SubmitPaymentCommand request, CancellationToken cancellationToken)
+    public async Task<Result<SubmitPaymentOutcome>> Handle(SubmitPaymentCommand request, CancellationToken cancellationToken)
     {
         var existing = await idempotencyStore.FindAsync(request.MerchantId, request.IdempotencyKey, cancellationToken);
         if (existing is not null)
         {
             var replayed = JsonSerializer.Deserialize<PaymentResponse>(existing.ResponseBody, JsonOptions)!;
-            return Result.Success(replayed);
+            return Result.Success<SubmitPaymentOutcome>(new SubmitPaymentCompleted(replayed));
         }
 
         var moneyResult = Money.Create(request.Amount, request.Currency);
         if (moneyResult.IsFailure)
-            return Result.Failure<PaymentResponse>(moneyResult.Error);
+            return Result.Failure<SubmitPaymentOutcome>(moneyResult.Error);
 
         var paymentResult = Payment.Submit(request.MerchantId, moneyResult.Value, request.PaymentMethodRef, request.IdempotencyKey);
         if (paymentResult.IsFailure)
-            return Result.Failure<PaymentResponse>(paymentResult.Error);
+            return Result.Failure<SubmitPaymentOutcome>(paymentResult.Error);
 
         var payment = paymentResult.Value;
         await payments.AddAsync(payment, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var authorization = await authorizationClient.AuthorizeAsync(
-            new AuthorizeRequest(payment.Id, payment.Amount.Amount, payment.Amount.Currency, payment.PaymentMethodRef),
-            cancellationToken);
-
-        if (!authorization.Approved)
+        try
         {
-            payment.Decline(authorization.DeclineReason ?? "declined");
             await unitOfWork.SaveChangesAsync(cancellationToken);
-            return await FinalizeAndCache(payment, cancellationToken, cacheable: true);
+        }
+        catch (PaymentAlreadyInFlightException)
+        {
+            // Someone already has this (merchant, key) in flight — this is exactly the Phase-1 gap
+            // ADR-0002 called out. Rather than starting a second authorization, report on the
+            // existing attempt: replay it if it's already terminal, otherwise tell the caller to
+            // poll rather than joining a wait we have no handle on.
+            var inFlight = await payments.GetByMerchantAndIdempotencyKeyAsync(request.MerchantId, request.IdempotencyKey, cancellationToken)
+                ?? throw new InvalidOperationException("Lost a payment-creation race but the winning payment is missing.");
+
+            return inFlight.Status is PaymentStatus.Pending or PaymentStatus.Authorized
+                ? Result.Success<SubmitPaymentOutcome>(new SubmitPaymentPending(inFlight.Id))
+                : Result.Success<SubmitPaymentOutcome>(new SubmitPaymentCompleted(ToResponse(inFlight)));
         }
 
-        payment.Authorize(authorization.AuthorizationId);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-
-        var ledgerRequest = new PostLedgerEntryRequest(
-            payment.Id,
-            DebitAccountId: $"customer:{payment.PaymentMethodRef}",
-            CreditAccountId: $"merchant:{payment.MerchantId}",
-            payment.Amount.Amount,
-            payment.Amount.Currency);
-
-        var ledgerResponse = await ledgerClient.PostEntryAsync(ledgerRequest, cancellationToken);
-
-        if (!ledgerResponse.Posted)
+        try
         {
-            // Downstream/infra failure, not a business decline: don't cache the idempotency record
-            // so a retry with the same key can still succeed once Ledger recovers.
-            payment.Fail("ledger-post-failed");
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-            return Result.Success(ToResponse(payment));
+            await requestClient.GetResponse<PaymentProcessed>(
+                new ProcessPayment(payment.Id, payment.MerchantId, payment.Amount.Amount, payment.Amount.Currency, payment.PaymentMethodRef),
+                cancellationToken,
+                SagaResponseTimeout);
+
+            var finalPayment = await payments.GetByIdAsync(payment.Id, cancellationToken)
+                ?? throw new InvalidOperationException($"Payment {payment.Id} vanished after the saga reported completion.");
+
+            return await FinalizeAndCache(finalPayment, cancellationToken);
         }
-
-        payment.Capture();
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return await FinalizeAndCache(payment, cancellationToken, cacheable: true);
+        catch (RequestTimeoutException)
+        {
+            // The saga is still running (Fraud/Authorization/Ledger haven't all answered yet). The
+            // API contract falls back to async here rather than blocking indefinitely — see ADR-0006.
+            return Result.Success<SubmitPaymentOutcome>(new SubmitPaymentPending(payment.Id));
+        }
     }
 
-    private async Task<Result<PaymentResponse>> FinalizeAndCache(Payment payment, CancellationToken cancellationToken, bool cacheable)
+    private async Task<Result<SubmitPaymentOutcome>> FinalizeAndCache(Payment payment, CancellationToken cancellationToken)
     {
         var response = ToResponse(payment);
 
-        if (cacheable)
+        // Only cache a definitive business outcome. Failed means the saga's compensating
+        // transaction already ran for a downstream/infra failure — not caching it lets a retry with
+        // the same key try the whole flow again once things recover.
+        if (payment.Status is PaymentStatus.Captured or PaymentStatus.Declined)
         {
             var body = JsonSerializer.Serialize(response, JsonOptions);
             var record = IdempotencyRecord.Create(payment.MerchantId, payment.IdempotencyKey, payment.Id, 201, body);
@@ -98,15 +101,14 @@ public sealed class SubmitPaymentCommandHandler(
             }
             catch (IdempotencyKeyConflictException)
             {
-                // A concurrent request for the same (merchant, key) won the race and committed
-                // first. Its result is authoritative — replay it rather than surfacing a conflict.
                 var winner = await idempotencyStore.FindAsync(payment.MerchantId, payment.IdempotencyKey, cancellationToken)
                     ?? throw new InvalidOperationException("Lost an idempotency race but the winning record is missing.");
-                return Result.Success(JsonSerializer.Deserialize<PaymentResponse>(winner.ResponseBody, JsonOptions)!);
+                return Result.Success<SubmitPaymentOutcome>(
+                    new SubmitPaymentCompleted(JsonSerializer.Deserialize<PaymentResponse>(winner.ResponseBody, JsonOptions)!));
             }
         }
 
-        return Result.Success(response);
+        return Result.Success<SubmitPaymentOutcome>(new SubmitPaymentCompleted(response));
     }
 
     private static PaymentResponse ToResponse(Payment payment) => new(

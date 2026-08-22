@@ -1,14 +1,47 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Payflow.Payments.Api.Endpoints;
 using Payflow.Payments.Application;
+using Payflow.Payments.Application.Saga;
 using Payflow.Payments.Infrastructure;
 using Payflow.Payments.Infrastructure.Persistence;
 using Payflow.Shared.Api;
+using Payflow.Shared.Contracts.Messages;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddPaymentsApplication();
 builder.Services.AddPaymentsInfrastructure(builder.Configuration);
+
+builder.Services.AddMassTransit(x =>
+{
+    x.AddSagaStateMachine<PaymentSagaStateMachine, PaymentSagaState>()
+        .EntityFrameworkRepository(r =>
+        {
+            r.ExistingDbContext<PaymentsDbContext>();
+            r.UsePostgres();
+        });
+
+    // Payments.Api's own synchronous facade over the saga — see ADR-0006.
+    x.AddRequestClient<ProcessPayment>(TimeSpan.FromSeconds(10));
+
+    x.AddEntityFrameworkOutbox<PaymentsDbContext>(o =>
+    {
+        o.UsePostgres();
+        o.UseBusOutbox();
+    });
+
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host(builder.Configuration["RabbitMq:Host"] ?? "localhost", "/", h =>
+        {
+            h.Username(builder.Configuration["RabbitMq:Username"] ?? "guest");
+            h.Password(builder.Configuration["RabbitMq:Password"] ?? "guest");
+        });
+
+        cfg.ConfigureEndpoints(context);
+    });
+});
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

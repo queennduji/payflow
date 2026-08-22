@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Payflow.Ledger.Domain;
 
@@ -11,5 +12,6 @@ public sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options) :
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(LedgerDbContext).Assembly);
+        modelBuilder.AddTransactionalOutboxEntities();
     }
 }

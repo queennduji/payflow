@@ -9,6 +9,8 @@ public sealed class AuthorizationAttempt : Entity<Guid>
     public bool Approved { get; private set; }
     public string? DeclineReason { get; private set; }
     public string ProcessorReference { get; private set; } = null!;
+    public bool IsVoided { get; private set; }
+    public DateTimeOffset? VoidedAt { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
     private AuthorizationAttempt() { }
@@ -28,4 +30,22 @@ public sealed class AuthorizationAttempt : Entity<Guid>
 
     public static AuthorizationAttempt Decline(Guid paymentId, string reason, string processorReference) =>
         new(Guid.NewGuid(), paymentId, false, reason, processorReference);
+
+    /// <summary>
+    /// The saga's compensating action when a later step (Ledger posting) fails after this
+    /// authorization already succeeded. Idempotent — voiding an already-voided attempt is a no-op,
+    /// since the command that triggers it can be redelivered.
+    /// </summary>
+    public Result Void()
+    {
+        if (!Approved)
+            return Result.Failure(Error.Conflict("Authorization.CannotVoidDeclined", "Cannot void an authorization that was never approved."));
+
+        if (IsVoided)
+            return Result.Success();
+
+        IsVoided = true;
+        VoidedAt = DateTimeOffset.UtcNow;
+        return Result.Success();
+    }
 }

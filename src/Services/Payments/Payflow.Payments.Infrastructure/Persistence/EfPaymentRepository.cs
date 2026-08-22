@@ -11,4 +11,7 @@ public sealed class EfPaymentRepository(PaymentsDbContext db) : IPaymentReposito
 
     public Task<Payment?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         db.Payments.SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+    public Task<Payment?> GetByMerchantAndIdempotencyKeyAsync(string merchantId, string idempotencyKey, CancellationToken cancellationToken) =>
+        db.Payments.SingleOrDefaultAsync(p => p.MerchantId == merchantId && p.IdempotencyKey == idempotencyKey, cancellationToken);
 }

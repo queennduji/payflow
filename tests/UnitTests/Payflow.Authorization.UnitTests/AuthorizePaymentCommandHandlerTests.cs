@@ -9,6 +9,7 @@ namespace Payflow.Authorization.UnitTests;
 public class AuthorizePaymentCommandHandlerTests
 {
     private readonly IAuthorizationStore _store = Substitute.For<IAuthorizationStore>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
 
     [Fact]
     public async Task A_repeated_call_for_the_same_payment_replays_the_original_decision_instead_of_deciding_again()
@@ -17,7 +18,7 @@ public class AuthorizePaymentCommandHandlerTests
         var original = AuthorizationAttempt.Approve(paymentId, "AUTH-ORIGINAL");
         _store.FindByPaymentIdAsync(paymentId, Arg.Any<CancellationToken>()).Returns(original);
 
-        var handler = new AuthorizePaymentCommandHandler(_store);
+        var handler = new AuthorizePaymentCommandHandler(_store, _unitOfWork);
         var result = await handler.Handle(new AuthorizePaymentCommand(paymentId, 50m, "USD", "tok_visa"), CancellationToken.None);
 
         result.Value.ProcessorReference.Should().Be("AUTH-ORIGINAL");
@@ -29,7 +30,7 @@ public class AuthorizePaymentCommandHandlerTests
     {
         _store.FindByPaymentIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((AuthorizationAttempt?)null);
 
-        var handler = new AuthorizePaymentCommandHandler(_store);
+        var handler = new AuthorizePaymentCommandHandler(_store, _unitOfWork);
         var result = await handler.Handle(new AuthorizePaymentCommand(Guid.NewGuid(), 50m, "USD", "tok_visa"), CancellationToken.None);
 
         result.Value.Approved.Should().BeTrue();

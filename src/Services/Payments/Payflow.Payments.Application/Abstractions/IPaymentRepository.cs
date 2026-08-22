@@ -7,4 +7,5 @@ public interface IPaymentRepository
 {
     Task AddAsync(Payment payment, CancellationToken cancellationToken);
     Task<Payment?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+    Task<Payment?> GetByMerchantAndIdempotencyKeyAsync(string merchantId, string idempotencyKey, CancellationToken cancellationToken);
 }

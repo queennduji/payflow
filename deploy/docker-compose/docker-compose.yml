@@ -1,6 +1,17 @@
 name: payflow
 
 services:
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672" # management UI: http://localhost:15672 (guest/guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
   postgres-payments:
     image: postgres:17-alpine
     environment:
@@ -33,12 +44,67 @@ services:
       timeout: 3s
       retries: 10
 
+  postgres-fraud:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: fraud_db
+      POSTGRES_USER: payflow
+      POSTGRES_PASSWORD: payflow
+    ports:
+      - "5434:5432"
+    volumes:
+      - fraud-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payflow -d fraud_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres-notifications:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: notifications_db
+      POSTGRES_USER: payflow
+      POSTGRES_PASSWORD: payflow
+    ports:
+      - "5435:5432"
+    volumes:
+      - notifications-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payflow -d notifications_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres-authorization:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: authorization_db
+      POSTGRES_USER: payflow
+      POSTGRES_PASSWORD: payflow
+    ports:
+      - "5436:5432"
+    volumes:
+      - authorization-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payflow -d authorization_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   authorization-api:
     build:
       context: ../..
       dockerfile: src/Services/Authorization/Payflow.Authorization.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__AuthorizationDb: "Host=postgres-authorization;Port=5432;Database=authorization_db;Username=payflow;Password=payflow"
+      RabbitMq__Host: "rabbitmq"
+    depends_on:
+      postgres-authorization:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "5081:8080"
 
@@ -49,11 +115,46 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__LedgerDb: "Host=postgres-ledger;Port=5432;Database=ledger_db;Username=payflow;Password=payflow"
+      RabbitMq__Host: "rabbitmq"
     depends_on:
       postgres-ledger:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     ports:
       - "5204:8080"
+
+  fraud-api:
+    build:
+      context: ../..
+      dockerfile: src/Services/Fraud/Payflow.Fraud.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__FraudDb: "Host=postgres-fraud;Port=5432;Database=fraud_db;Username=payflow;Password=payflow"
+      RabbitMq__Host: "rabbitmq"
+    depends_on:
+      postgres-fraud:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "5277:8080"
+
+  notifications-api:
+    build:
+      context: ../..
+      dockerfile: src/Services/Notifications/Payflow.Notifications.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__NotificationsDb: "Host=postgres-notifications;Port=5432;Database=notifications_db;Username=payflow;Password=payflow"
+      RabbitMq__Host: "rabbitmq"
+    depends_on:
+      postgres-notifications:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "5229:8080"
 
   payments-api:
     build:
@@ -62,14 +163,19 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__PaymentsDb: "Host=postgres-payments;Port=5432;Database=payments_db;Username=payflow;Password=payflow"
-      Services__AuthorizationBaseUrl: "http://authorization-api:8080"
-      Services__LedgerBaseUrl: "http://ledger-api:8080"
+      RabbitMq__Host: "rabbitmq"
     depends_on:
       postgres-payments:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       authorization-api:
         condition: service_started
       ledger-api:
+        condition: service_started
+      fraud-api:
+        condition: service_started
+      notifications-api:
         condition: service_started
     ports:
       - "5218:8080"
@@ -82,12 +188,19 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ReverseProxy__Clusters__payments__Destinations__destination1__Address: "http://payments-api:8080"
       ReverseProxy__Clusters__ledger__Destinations__destination1__Address: "http://ledger-api:8080"
+      ReverseProxy__Clusters__fraud__Destinations__destination1__Address: "http://fraud-api:8080"
+      ReverseProxy__Clusters__notifications__Destinations__destination1__Address: "http://notifications-api:8080"
     depends_on:
       - payments-api
       - ledger-api
+      - fraud-api
+      - notifications-api
     ports:
       - "8080:8080"
 
 volumes:
   payments-db-data:
   ledger-db-data:
+  fraud-db-data:
+  notifications-db-data:
+  authorization-db-data:

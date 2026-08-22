@@ -16,14 +16,20 @@ public sealed class EfUnitOfWork(PaymentsDbContext db) : IUnitOfWork
         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
             // Translate the storage-level race into the Application-layer vocabulary before it
-            // escapes this layer — callers should never need to know we're on Postgres.
-            var conflicting = db.ChangeTracker.Entries<IdempotencyRecord>()
+            // escapes this layer — callers should never need to know we're on Postgres. Each call
+            // site only ever adds one of these in a given SaveChangesAsync, so checking both is
+            // unambiguous.
+            var conflictingIdempotency = db.ChangeTracker.Entries<IdempotencyRecord>()
                 .FirstOrDefault(e => e.State == EntityState.Added)?.Entity;
+            if (conflictingIdempotency is not null)
+                throw new IdempotencyKeyConflictException(conflictingIdempotency.MerchantId, conflictingIdempotency.Key, ex);
 
-            if (conflicting is null)
-                throw;
+            var conflictingPayment = db.ChangeTracker.Entries<Payment>()
+                .FirstOrDefault(e => e.State == EntityState.Added)?.Entity;
+            if (conflictingPayment is not null)
+                throw new PaymentAlreadyInFlightException(conflictingPayment.MerchantId, conflictingPayment.IdempotencyKey, ex);
 
-            throw new IdempotencyKeyConflictException(conflicting.MerchantId, conflicting.Key, ex);
+            throw;
         }
     }
 

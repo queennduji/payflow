@@ -8,4 +8,4 @@ public sealed record SubmitPaymentCommand(
     decimal Amount,
     string Currency,
     string PaymentMethodRef,
-    string IdempotencyKey) : IRequest<Result<PaymentResponse>>;
+    string IdempotencyKey) : IRequest<Result<SubmitPaymentOutcome>>;
