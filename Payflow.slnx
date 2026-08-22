@@ -1,0 +1,36 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Gateway/">
+    <Project Path="src/Gateway/Payflow.Gateway/Payflow.Gateway.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Authorization/">
+    <Project Path="src/Services/Authorization/Payflow.Authorization.Api/Payflow.Authorization.Api.csproj" />
+    <Project Path="src/Services/Authorization/Payflow.Authorization.Application/Payflow.Authorization.Application.csproj" />
+    <Project Path="src/Services/Authorization/Payflow.Authorization.Domain/Payflow.Authorization.Domain.csproj" />
+    <Project Path="src/Services/Authorization/Payflow.Authorization.Infrastructure/Payflow.Authorization.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Ledger/">
+    <Project Path="src/Services/Ledger/Payflow.Ledger.Api/Payflow.Ledger.Api.csproj" />
+    <Project Path="src/Services/Ledger/Payflow.Ledger.Application/Payflow.Ledger.Application.csproj" />
+    <Project Path="src/Services/Ledger/Payflow.Ledger.Domain/Payflow.Ledger.Domain.csproj" />
+    <Project Path="src/Services/Ledger/Payflow.Ledger.Infrastructure/Payflow.Ledger.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Payments/">
+    <Project Path="src/Services/Payments/Payflow.Payments.Api/Payflow.Payments.Api.csproj" />
+    <Project Path="src/Services/Payments/Payflow.Payments.Application/Payflow.Payments.Application.csproj" />
+    <Project Path="src/Services/Payments/Payflow.Payments.Domain/Payflow.Payments.Domain.csproj" />
+    <Project Path="src/Services/Payments/Payflow.Payments.Infrastructure/Payflow.Payments.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/Payflow.Shared.Api/Payflow.Shared.Api.csproj" />
+    <Project Path="src/Shared/Payflow.Shared.Contracts/Payflow.Shared.Contracts.csproj" />
+    <Project Path="src/Shared/Payflow.Shared.Kernel/Payflow.Shared.Kernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/UnitTests/">
+    <Project Path="tests/UnitTests/Payflow.Authorization.UnitTests/Payflow.Authorization.UnitTests.csproj" />
+    <Project Path="tests/UnitTests/Payflow.Ledger.UnitTests/Payflow.Ledger.UnitTests.csproj" />
+    <Project Path="tests/UnitTests/Payflow.Payments.UnitTests/Payflow.Payments.UnitTests.csproj" />
+  </Folder>
+</Solution>

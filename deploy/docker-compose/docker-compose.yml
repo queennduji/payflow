@@ -1,0 +1,93 @@
+name: payflow
+
+services:
+  postgres-payments:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: payments_db
+      POSTGRES_USER: payflow
+      POSTGRES_PASSWORD: payflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - payments-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payflow -d payments_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres-ledger:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ledger_db
+      POSTGRES_USER: payflow
+      POSTGRES_PASSWORD: payflow
+    ports:
+      - "5433:5432"
+    volumes:
+      - ledger-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payflow -d ledger_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  authorization-api:
+    build:
+      context: ../..
+      dockerfile: src/Services/Authorization/Payflow.Authorization.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "5081:8080"
+
+  ledger-api:
+    build:
+      context: ../..
+      dockerfile: src/Services/Ledger/Payflow.Ledger.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__LedgerDb: "Host=postgres-ledger;Port=5432;Database=ledger_db;Username=payflow;Password=payflow"
+    depends_on:
+      postgres-ledger:
+        condition: service_healthy
+    ports:
+      - "5204:8080"
+
+  payments-api:
+    build:
+      context: ../..
+      dockerfile: src/Services/Payments/Payflow.Payments.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__PaymentsDb: "Host=postgres-payments;Port=5432;Database=payments_db;Username=payflow;Password=payflow"
+      Services__AuthorizationBaseUrl: "http://authorization-api:8080"
+      Services__LedgerBaseUrl: "http://ledger-api:8080"
+    depends_on:
+      postgres-payments:
+        condition: service_healthy
+      authorization-api:
+        condition: service_started
+      ledger-api:
+        condition: service_started
+    ports:
+      - "5218:8080"
+
+  gateway:
+    build:
+      context: ../..
+      dockerfile: src/Gateway/Payflow.Gateway/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ReverseProxy__Clusters__payments__Destinations__destination1__Address: "http://payments-api:8080"
+      ReverseProxy__Clusters__ledger__Destinations__destination1__Address: "http://ledger-api:8080"
+    depends_on:
+      - payments-api
+      - ledger-api
+    ports:
+      - "8080:8080"
+
+volumes:
+  payments-db-data:
+  ledger-db-data:

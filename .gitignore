@@ -1,0 +1,51 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+coverage.*
+[Cc]overage[Rr]esults*/
+
+# Rider/VSCode
+.vscode/*
+!.vscode/extensions.json
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+
+# EF Core
+*.db
+*.db-shm
+*.db-wal
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.env
+.env.local
+appsettings.*.local.json
+**/secrets.json
+
+# Kubernetes local
+kubeconfig*.yaml

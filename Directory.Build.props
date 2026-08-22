@@ -1,0 +1,17 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>CS1591</NoWarn>
+    <Authors>PayFlow Contributors</Authors>
+    <Company>PayFlow</Company>
+  </PropertyGroup>
+
+</Project>

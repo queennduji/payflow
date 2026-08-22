@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore Payflow.slnx
+
+      - name: Format check
+        run: dotnet format Payflow.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build Payflow.slnx --no-restore -c Release
+
+      - name: Test
+        run: dotnet test Payflow.slnx --no-build -c Release --logger "trx" --results-directory TestResults
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+
+  docker:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: gateway
+            dockerfile: src/Gateway/Payflow.Gateway/Dockerfile
+          - name: payments-api
+            dockerfile: src/Services/Payments/Payflow.Payments.Api/Dockerfile
+          - name: authorization-api
+            dockerfile: src/Services/Authorization/Payflow.Authorization.Api/Dockerfile
+          - name: ledger-api
+            dockerfile: src/Services/Ledger/Payflow.Ledger.Api/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service.dockerfile }}
+          push: false
+          load: true
+          tags: payflow-${{ matrix.service.name }}:ci
+          cache-from: type=gha,scope=${{ matrix.service.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: payflow-${{ matrix.service.name }}:ci
+          severity: CRITICAL,HIGH
+          exit-code: "0" # report-only for now; flip to "1" once the base image backlog is triaged
+
+      - name: Push image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service.dockerfile }}
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/payflow-${{ matrix.service.name }}:${{ github.sha }},ghcr.io/${{ github.repository_owner }}/payflow-${{ matrix.service.name }}:latest
+          cache-from: type=gha,scope=${{ matrix.service.name }}
