@@ -4,8 +4,9 @@ A payment gateway built as a microservices platform: saga-orchestrated authoriza
 double-entry ledger, fraud review, and merchant notifications — with the failure modes that come
 with distributed systems treated as first-class design concerns rather than afterthoughts.
 
-This is a portfolio project, built in phases, each one a working, runnable increment. **Phases 0–2**
-(vertical slice → saga orchestration) are implemented today; the phases after that are the roadmap.
+This is a portfolio project, built in phases, each one a working, runnable increment. **Phases 0–3**
+(vertical slice → saga orchestration → resilience engineering) are implemented today; the phases
+after that are the roadmap.
 
 ## Why this exists
 
@@ -58,6 +59,10 @@ Full diagrams (container view, sequence diagram, bounded contexts) are in
   [ADR-0003](docs/adr/0003-derived-ledger-balances.md).
 - A `Result<T>` railway-oriented outcome type so expected business failures (declined charge,
   invalid amount) are part of the domain's vocabulary, not exception-driven control flow.
+- **Resilience policy around the (simulated) card network** — timeout, retry with exponential
+  backoff, and a circuit breaker (Polly v8), with a configurable fault-injection rate so the whole
+  chain is actually exercisable, not just present. Exhausted retries or an open circuit degrade to
+  an ordinary `processor_unavailable` decline rather than a fault.
 
 ## Running it
 
@@ -116,6 +121,30 @@ enough to get a `202 Accepted` instead of a `201` (see ADR-0006).
 Swagger UI is available per service in `Development` (the docker-compose default) at
 `http://localhost:<port>/swagger`.
 
+### Watching the circuit breaker trip
+
+The mock card network fails outright some fraction of the time, controlled by
+`Chaos__CardNetworkFaultRate` on `authorization-api` (default `0.0`, i.e. off). Crank it up and
+watch the resilience policy — timeout → retry → circuit breaker — actually do something:
+
+```bash
+# Edit deploy/docker-compose/docker-compose.yml: set Chaos__CardNetworkFaultRate to "0.6" under
+# authorization-api, then:
+docker compose -f deploy/docker-compose/docker-compose.yml up --build -d authorization-api
+
+# Fire a burst of payments and watch the mix of outcomes:
+for i in $(seq 1 15); do
+  curl -s -X POST http://localhost:8080/api/payments \
+    -H "Content-Type: application/json" -H "Idempotency-Key: chaos-$i" \
+    -d '{"merchantId":"chaos","amount":10,"currency":"USD","paymentMethodRef":"tok_visa"}' | jq -c '{status,failureReason}'
+done
+```
+
+Expect a mix of normal `Captured` results, a few that succeeded after a retry, and — once enough
+failures land inside the sampling window — a run of fast `Declined` / `processor_unavailable`
+responses while the circuit is open, then recovery once the break duration elapses. Set the rate
+back to `0.0` (or just restart the container) to return to normal.
+
 ### Local development without Docker
 
 ```bash
@@ -136,7 +165,7 @@ Each phase after Phase 1 ships as its own working increment.
 | 0 – done | Solution scaffolding, Clean Architecture layout, CI skeleton |
 | 1 – done | Vertical slice: synchronous HTTP flow, idempotency, double-entry ledger, unit tests |
 | 2 – done | Saga orchestration (MassTransit) + transactional outbox; Fraud and Notifications join the flow; compensating transactions |
-| 3 | Resilience engineering: Polly circuit breakers/retries, chaos-fault injection (Simmy) |
+| 3 – done | Resilience engineering: Polly v8 timeout/retry/circuit breaker around the mock card network, configurable fault injection, EF Core connection resiliency |
 | 4 | Observability: OpenTelemetry tracing/metrics, structured logs, local Grafana/Prometheus/Tempo/Loki |
 | 5 | Kubernetes + Helm, deployed locally via `kind` |
 | 6 | Security: Keycloak OIDC, JWT auth, mock tokenization vault |

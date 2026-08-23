@@ -5,7 +5,7 @@ using Payflow.Shared.Kernel;
 
 namespace Payflow.Authorization.Application.Authorizations;
 
-public sealed class AuthorizePaymentCommandHandler(IAuthorizationStore store, IUnitOfWork unitOfWork)
+public sealed class AuthorizePaymentCommandHandler(IAuthorizationStore store, IUnitOfWork unitOfWork, ICardNetworkClient cardNetwork)
     : IRequestHandler<AuthorizePaymentCommand, Result<AuthorizationResult>>
 {
     public async Task<Result<AuthorizationResult>> Handle(AuthorizePaymentCommand request, CancellationToken cancellationToken)
@@ -14,12 +14,15 @@ public sealed class AuthorizePaymentCommandHandler(IAuthorizationStore store, IU
         if (existing is not null)
             return Result.Success(ToResult(existing));
 
-        var (approved, declineReason) = AuthorizationDecisionEngine.Decide(request.Amount, request.Currency, request.PaymentMethodRef);
+        // The business decision (AuthorizationDecisionEngine) lives behind this call, but the call
+        // itself carries the latency/unavailability a real processor would have, and is wrapped in
+        // resilience policies the handler knows nothing about.
+        var decision = await cardNetwork.AuthorizeAsync(request.Amount, request.Currency, request.PaymentMethodRef, cancellationToken);
         var processorReference = $"AUTH-{Guid.NewGuid():N}"[..16].ToUpperInvariant();
 
-        var attempt = approved
+        var attempt = decision.Approved
             ? AuthorizationAttempt.Approve(request.PaymentId, processorReference)
-            : AuthorizationAttempt.Decline(request.PaymentId, declineReason!, processorReference);
+            : AuthorizationAttempt.Decline(request.PaymentId, decision.DeclineReason!, processorReference);
 
         await store.SaveAsync(attempt, cancellationToken);
 

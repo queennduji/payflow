@@ -11,16 +11,11 @@ namespace Payflow.Payments.Api.Consumers;
 /// up and got a 202 instead — there's nothing stored to respond to in that case.
 /// </summary>
 /// <remarks>
-/// <see cref="PaymentOutcomeReady"/> goes through the same transactional outbox as every other
-/// message the saga publishes, specifically so this consumer only ever runs after the status change
-/// that produced it is durable. In practice, MassTransit's EF outbox "deliver immediately after
-/// SaveChanges" fast path can still fire slightly ahead of the *outer* commit that
-/// <c>EntityFrameworkSagaRepositoryContextFactory</c> wraps saga processing in (observed directly:
-/// a fresh, untracked read immediately after this message arrives occasionally still returns the
-/// pre-transition status). Rather than depend on exact ordering between two different frameworks'
-/// commit/dispatch internals, this consumer confirms the write is actually visible — a handful of
-/// short polls, milliseconds in the overwhelmingly common case — before answering the caller. This
-/// is a deliberate consistency guard, not a workaround for a bug in our own code.
+/// The EF outbox's "dispatch immediately after SaveChanges" fast path can beat the *outer*
+/// transaction that <c>EntityFrameworkSagaRepositoryContextFactory</c> wraps saga processing in, so
+/// this message can arrive slightly ahead of its own status change being visible to a fresh read.
+/// Rather than rely on exact ordering between two frameworks' commit/dispatch internals, this
+/// consumer polls (briefly — milliseconds in practice) until the write is visible before replying.
 /// </remarks>
 public sealed class PaymentOutcomeReadyConsumer(IDbContextFactory<PaymentsDbContext> contextFactory) : IConsumer<PaymentOutcomeReady>
 {

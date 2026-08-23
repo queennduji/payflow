@@ -11,7 +11,7 @@ public static class DependencyInjection
     public static IServiceCollection AddNotificationsInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<NotificationsDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("NotificationsDb")));
+            options.UseNpgsql(configuration.GetConnectionString("NotificationsDb"), npgsql => npgsql.EnableRetryOnFailure()));
 
         services.AddScoped<INotificationRepository, EfNotificationRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();

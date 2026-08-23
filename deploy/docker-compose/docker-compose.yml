@@ -100,6 +100,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__AuthorizationDb: "Host=postgres-authorization;Port=5432;Database=authorization_db;Username=payflow;Password=payflow"
       RabbitMq__Host: "rabbitmq"
+      # Chance (0.0-1.0) that the simulated card network call fails outright — see ADR-0008.
+      # Bump this via `docker compose up -d --build authorization-api` after editing, or
+      # `docker compose run -e Chaos__CardNetworkFaultRate=0.6 ...`, to watch the circuit breaker trip.
+      Chaos__CardNetworkFaultRate: "0.0"
     depends_on:
       postgres-authorization:
         condition: service_healthy

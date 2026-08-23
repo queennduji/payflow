@@ -11,7 +11,7 @@ public static class DependencyInjection
     public static IServiceCollection AddLedgerInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<LedgerDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("LedgerDb")));
+            options.UseNpgsql(configuration.GetConnectionString("LedgerDb"), npgsql => npgsql.EnableRetryOnFailure()));
 
         services.AddScoped<ILedgerEntryGroupRepository, EfLedgerEntryGroupRepository>();
         services.AddScoped<IAccountRepository, EfAccountRepository>();

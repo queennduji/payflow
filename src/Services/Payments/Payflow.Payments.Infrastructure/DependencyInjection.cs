@@ -16,7 +16,7 @@ public static class DependencyInjection
         // potentially handing back a pinned-stale snapshot. The scoped PaymentsDbContext everything
         // else injects is created from the same factory.
         services.AddDbContextFactory<PaymentsDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("PaymentsDb")));
+            options.UseNpgsql(configuration.GetConnectionString("PaymentsDb"), npgsql => npgsql.EnableRetryOnFailure()));
         services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<PaymentsDbContext>>().CreateDbContext());
 
         services.AddScoped<IPaymentRepository, EfPaymentRepository>();

@@ -22,11 +22,11 @@ all fast) has no reason to force every client into a poll loop.
 the request's `ResponseAddress`/`RequestId` into saga state; whichever step actually finalizes the
 saga — Fraud rejecting, Authorization declining, or Ledger posting successfully — publishes a
 `PaymentOutcomeReady` message carrying that stashed address, several messages after the original
-request arrived. A dedicated `PaymentOutcomeReadyConsumer` is what actually sends the reply — not
-the saga's own activity chain directly; see [ADR-0007](0007-outbox-dispatch-ordering-guard.md) for
-why that separation (and a consistency guard in that consumer) turned out to matter. This overall
-shape — stash the requester's address in saga state, respond from wherever the saga finalizes — is
-a documented MassTransit pattern for long-running request/response, not a workaround.
+request arrived. A dedicated `PaymentOutcomeReadyConsumer` is what actually sends the reply, rather
+than the saga's own activity chain directly, so it can guard against the outbox/saga-transaction
+ordering issue noted on that consumer. This overall shape — stash the requester's address in saga
+state, respond from wherever the saga finalizes — is a documented MassTransit pattern for
+long-running request/response, not a workaround.
 
 If the saga hasn't finished within the timeout, the endpoint falls back to `202 Accepted` with a
 `Location: /payments/{id}` header instead of blocking indefinitely.
@@ -44,6 +44,4 @@ Clients get the Phase 1 experience for the common case with none of the internal
 that hit the slow path get a standard async contract (`202` + polling) rather than a hung
 connection. The trade-off is complexity: the saga has to carry response-routing state it wouldn't
 otherwise need, and a bug in the response path would silently strand a waiting HTTP client until its
-own timeout — worth calling out explicitly rather than leaving implicit in the code. In practice,
-getting this ordering right against a real broker surfaced a genuine, non-obvious bug — see
-[ADR-0007](0007-outbox-dispatch-ordering-guard.md).
+own timeout — worth calling out explicitly rather than leaving implicit in the code.

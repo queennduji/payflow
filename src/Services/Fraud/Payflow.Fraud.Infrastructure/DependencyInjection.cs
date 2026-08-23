@@ -11,7 +11,7 @@ public static class DependencyInjection
     public static IServiceCollection AddFraudInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<FraudDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("FraudDb")));
+            options.UseNpgsql(configuration.GetConnectionString("FraudDb"), npgsql => npgsql.EnableRetryOnFailure()));
 
         services.AddScoped<IFraudCheckRepository, EfFraudCheckRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
