@@ -22,17 +22,24 @@ public sealed class PostLedgerEntryCommandHandler(
         if (existing is not null)
             return Result.Success(new LedgerEntryGroupResponse(existing.Id, Posted: true));
 
-        var amountResult = Money.Create(request.Amount, request.Currency);
-        if (amountResult.IsFailure)
-            return Result.Failure<LedgerEntryGroupResponse>(amountResult.Error);
+        // EF Core tracks owned types (Money, owned by each LedgerLine) by reference identity, so
+        // the debit and credit lines each need their own Money instance — sharing one object
+        // across two sibling owned entities silently corrupts change tracking (one line's amount
+        // ends up NULL in the database instead of raising an error).
+        var debitAmountResult = Money.Create(request.Amount, request.Currency);
+        var creditAmountResult = Money.Create(request.Amount, request.Currency);
+        if (debitAmountResult.IsFailure)
+            return Result.Failure<LedgerEntryGroupResponse>(debitAmountResult.Error);
+        if (creditAmountResult.IsFailure)
+            return Result.Failure<LedgerEntryGroupResponse>(creditAmountResult.Error);
 
         await accounts.GetOrOpenAsync(request.DebitAccountId, request.Currency, cancellationToken);
         await accounts.GetOrOpenAsync(request.CreditAccountId, request.Currency, cancellationToken);
 
         var lines = new[]
         {
-            LedgerLine.Debit(request.DebitAccountId, amountResult.Value),
-            LedgerLine.Credit(request.CreditAccountId, amountResult.Value)
+            LedgerLine.Debit(request.DebitAccountId, debitAmountResult.Value),
+            LedgerLine.Credit(request.CreditAccountId, creditAmountResult.Value)
         };
 
         var groupResult = LedgerEntryGroup.Post(request.PaymentId, lines);

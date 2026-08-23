@@ -10,8 +10,14 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddPaymentsInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<PaymentsDbContext>(options =>
+        // Registered via the factory (not AddDbContext) so IDbContextFactory<PaymentsDbContext> can
+        // also be Singleton-resolved cleanly — EfPaymentRepository.ReloadAsync uses it to read state
+        // a different process/scope wrote, without the ambient request-scoped context's connection
+        // potentially handing back a pinned-stale snapshot. The scoped PaymentsDbContext everything
+        // else injects is created from the same factory.
+        services.AddDbContextFactory<PaymentsDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("PaymentsDb")));
+        services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<PaymentsDbContext>>().CreateDbContext());
 
         services.AddScoped<IPaymentRepository, EfPaymentRepository>();
         services.AddScoped<IIdempotencyStore, EfIdempotencyStore>();

@@ -101,30 +101,42 @@ public class SubmitPaymentCommandHandlerTests
     [Fact]
     public async Task A_completed_saga_result_is_cached_when_the_outcome_is_captured()
     {
-        var finalPayment = Payment.Submit("merchant-1", Money.Create(100m, "USD").Value, "tok_visa", "idem-key-1").Value;
-        finalPayment.Authorize(Guid.NewGuid());
-        finalPayment.Capture();
-        _payments.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(finalPayment);
-        RequestClientReturns(new PaymentProcessed(finalPayment.Id, "Captured", null));
+        // ReloadAsync mutates the same tracked instance in place — that's what EF Core's reload
+        // does, and what SubmitPaymentCommandHandler relies on instead of a stale re-query.
+        _payments.ReloadAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var payment = callInfo.Arg<Payment>();
+                payment.Authorize(Guid.NewGuid());
+                payment.Capture();
+                return Task.CompletedTask;
+            });
+        RequestClientReturns(new PaymentProcessed(Guid.NewGuid(), "Captured", null));
 
         var result = await CreateHandler().Handle(ValidCommand(), CancellationToken.None);
 
-        result.Value.Should().BeOfType<SubmitPaymentCompleted>();
+        var outcome = result.Value.Should().BeOfType<SubmitPaymentCompleted>().Subject;
+        outcome.Payment.Status.Should().Be("Captured");
         await _idempotency.Received(1).SaveAsync(Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task A_completed_saga_result_is_not_cached_when_the_outcome_is_failed()
     {
-        var finalPayment = Payment.Submit("merchant-1", Money.Create(100m, "USD").Value, "tok_visa", "idem-key-1").Value;
-        finalPayment.Authorize(Guid.NewGuid());
-        finalPayment.Fail("ledger-post-failed");
-        _payments.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(finalPayment);
-        RequestClientReturns(new PaymentProcessed(finalPayment.Id, "Failed", "ledger-post-failed"));
+        _payments.ReloadAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var payment = callInfo.Arg<Payment>();
+                payment.Authorize(Guid.NewGuid());
+                payment.Fail("ledger-post-failed");
+                return Task.CompletedTask;
+            });
+        RequestClientReturns(new PaymentProcessed(Guid.NewGuid(), "Failed", "ledger-post-failed"));
 
         var result = await CreateHandler().Handle(ValidCommand(), CancellationToken.None);
 
-        result.Value.Should().BeOfType<SubmitPaymentCompleted>();
+        var outcome = result.Value.Should().BeOfType<SubmitPaymentCompleted>().Subject;
+        outcome.Payment.Status.Should().Be("Failed");
         await _idempotency.DidNotReceive().SaveAsync(Arg.Any<IdempotencyRecord>(), Arg.Any<CancellationToken>());
     }
 }

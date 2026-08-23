@@ -12,11 +12,16 @@ namespace Payflow.Payments.Application.Saga;
 /// succeeded. This is the Phase 2 replacement for the Phase 1 in-handler HTTP call chain — see
 /// ADR-0002 (the gap this closes) and ADR-0005 (this design).
 ///
-/// The saga also plays the "long-running responder" role for Payments.Api's synchronous facade:
-/// <see cref="ProcessPayment"/> arrives via <c>IRequestClient</c>, so <c>Initially()</c> stashes the
-/// caller's <see cref="ConsumeContext.ResponseAddress"/>/<see cref="ConsumeContext.RequestId"/> in
-/// saga state, and whichever step eventually finalizes the saga sends the response there directly —
-/// see <see cref="RespondAsync"/> and ADR-0006.
+/// The saga also plays a role in Payments.Api's synchronous facade: <see cref="ProcessPayment"/>
+/// arrives via <c>IRequestClient</c>, so <c>Initially()</c> stashes the caller's
+/// <see cref="ConsumeContext.ResponseAddress"/>/<see cref="ConsumeContext.RequestId"/> in saga
+/// state. Each terminal branch publishes <see cref="PaymentOutcomeReady"/> rather than sending the
+/// actual response itself — see ADR-0006 for why: a direct send here would leave via the transport
+/// before this activity chain's own database writes (which run inside the saga repository's ambient
+/// transaction) are guaranteed to have committed. Publishing goes through the same transactional
+/// outbox as every other message this saga sends, so PaymentOutcomeReady is only ever observed
+/// after the write that produced it is durable — the dedicated consumer of that message (see
+/// Payflow.Payments.Api.Consumers.PaymentOutcomeReadyConsumer) is what actually responds.
 /// </summary>
 public sealed class PaymentSagaStateMachine : MassTransitStateMachine<PaymentSagaState>
 {
@@ -72,7 +77,7 @@ public sealed class PaymentSagaStateMachine : MassTransitStateMachine<PaymentSag
 
             When(FraudCheckFailed)
                 .ThenAsync(context => MarkDeclinedAsync(context, context.Message.Reason))
-                .ThenAsync(context => RespondAsync(context, "Declined", context.Message.Reason))
+                .Publish(context => OutcomeReady(context, "Declined", context.Message.Reason))
                 .Publish(context => new SendPaymentNotification(context.Saga.CorrelationId, context.Saga.MerchantId, "Declined"))
                 .Finalize()
         );
@@ -91,7 +96,7 @@ public sealed class PaymentSagaStateMachine : MassTransitStateMachine<PaymentSag
 
             When(PaymentAuthorizationDeclined)
                 .ThenAsync(context => MarkDeclinedAsync(context, context.Message.Reason))
-                .ThenAsync(context => RespondAsync(context, "Declined", context.Message.Reason))
+                .Publish(context => OutcomeReady(context, "Declined", context.Message.Reason))
                 .Publish(context => new SendPaymentNotification(context.Saga.CorrelationId, context.Saga.MerchantId, "Declined"))
                 .Finalize()
         );
@@ -99,7 +104,7 @@ public sealed class PaymentSagaStateMachine : MassTransitStateMachine<PaymentSag
         During(PostingLedger,
             When(LedgerEntryPosted)
                 .ThenAsync(context => MarkCapturedAsync(context))
-                .ThenAsync(context => RespondAsync(context, "Captured", null))
+                .Publish(context => OutcomeReady(context, "Captured", null))
                 .Publish(context => new SendPaymentNotification(context.Saga.CorrelationId, context.Saga.MerchantId, "Captured"))
                 .Finalize(),
 
@@ -114,7 +119,7 @@ public sealed class PaymentSagaStateMachine : MassTransitStateMachine<PaymentSag
         During(VoidingAuthorization,
             When(AuthorizationVoided)
                 .ThenAsync(context => MarkFailedAsync(context, context.Saga.PendingFailureReason ?? "ledger-post-failed"))
-                .ThenAsync(context => RespondAsync(context, "Failed", context.Saga.PendingFailureReason))
+                .Publish(context => OutcomeReady(context, "Failed", context.Saga.PendingFailureReason))
                 .Publish(context => new SendPaymentNotification(context.Saga.CorrelationId, context.Saga.MerchantId, "Failed"))
                 .Finalize()
         );
@@ -134,24 +139,14 @@ public sealed class PaymentSagaStateMachine : MassTransitStateMachine<PaymentSag
     private static Task MarkFailedAsync(BehaviorContext<PaymentSagaState> context, string reason) =>
         Sender(context).Send(new MarkPaymentFailedCommand(context.Saga.CorrelationId, reason));
 
-    private static ISender Sender(BehaviorContext<PaymentSagaState> context) =>
-        context.GetServiceProvider().GetRequiredService<ISender>();
-
-    /// <summary>
-    /// Sends the saga's outcome back to whoever is holding a pending <c>IRequestClient</c> await on
-    /// the original <see cref="ProcessPayment"/> request. A no-op if the caller already gave up and
-    /// got a 202 instead (see ADR-0006) — there's nothing stored to respond to in that case.
-    /// </summary>
-    private static async Task RespondAsync(BehaviorContext<PaymentSagaState> context, string status, string? failureReason)
+    private static ISender Sender(BehaviorContext<PaymentSagaState> context)
     {
-        var saga = context.Saga;
-        if (saga.ResponseAddress is null || saga.RequestId is null)
-            return;
+        if (!context.TryGetPayload<IServiceProvider>(out var provider))
+            throw new InvalidOperationException("No IServiceProvider payload found on the saga's behavior context.");
 
-        var endpoint = await context.GetSendEndpoint(saga.ResponseAddress);
-        await endpoint.Send(new PaymentProcessed(saga.CorrelationId, status, failureReason), sendContext =>
-        {
-            sendContext.RequestId = saga.RequestId;
-        });
+        return provider.GetRequiredService<ISender>();
     }
+
+    private static PaymentOutcomeReady OutcomeReady(BehaviorContext<PaymentSagaState> context, string status, string? failureReason) =>
+        new(context.Saga.CorrelationId, status, failureReason, context.Saga.ResponseAddress, context.Saga.RequestId);
 }

@@ -69,10 +69,12 @@ public sealed class SubmitPaymentCommandHandler(
                 cancellationToken,
                 SagaResponseTimeout);
 
-            var finalPayment = await payments.GetByIdAsync(payment.Id, cancellationToken)
-                ?? throw new InvalidOperationException($"Payment {payment.Id} vanished after the saga reported completion.");
+            // The saga updated this row from its own consumers, each in a different scope — reload
+            // rather than re-query, or EF Core's identity map hands back this same stale tracked
+            // instance instead of hitting the database.
+            await payments.ReloadAsync(payment, cancellationToken);
 
-            return await FinalizeAndCache(finalPayment, cancellationToken);
+            return await FinalizeAndCache(payment, cancellationToken);
         }
         catch (RequestTimeoutException)
         {

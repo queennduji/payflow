@@ -30,6 +30,10 @@ builder.Services.AddMassTransit(x =>
             h.Password(builder.Configuration["RabbitMq:Password"] ?? "guest");
         });
 
+        // Postgres SERIALIZABLE isolation (used by the EF outbox integration) can legitimately
+        // reject a transaction with a 40001 conflict under concurrent load — expected, retriable
+        // behavior, not a bug; without a retry policy those faults would strand messages.
+        cfg.UseMessageRetry(r => r.Intervals(50, 100, 200, 500, 1000));
         cfg.ConfigureEndpoints(context);
     });
 });
