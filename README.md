@@ -73,8 +73,12 @@ Full diagrams (container view, sequence diagram, bounded contexts) are in
 **Prerequisites:** .NET 10 SDK, Docker Desktop.
 
 ```bash
+cp deploy/docker-compose/.env.example deploy/docker-compose/.env
 docker compose -f deploy/docker-compose/docker-compose.yml up --build
 ```
+
+`.env` (gitignored) holds the local Postgres/Grafana passwords — containers on your own machine's
+Docker network, never exposed anywhere, so the placeholder value in `.env.example` is fine as-is.
 
 This brings up RabbitMQ, five Postgres instances, six services — `gateway` (`:8080`),
 `payments-api` (`:5218`), `authorization-api` (`:5081`), `ledger-api` (`:5204`), `fraud-api`
@@ -175,7 +179,9 @@ dotnet test Payflow.slnx
 ```
 
 Running services directly with `dotnet run` needs Postgres and RabbitMQ reachable at the
-connection strings/settings in each service's `appsettings.json` (defaults assume `localhost`).
+connection strings/settings in each service's `appsettings.json` (defaults assume `localhost`,
+matching the Postgres containers from `docker compose up` and the `.env.example` password — edit
+both `appsettings.json` and `.env` together if you change it).
 
 ## Roadmap
 

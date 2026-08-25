@@ -17,7 +17,7 @@ services:
     environment:
       POSTGRES_DB: payments_db
       POSTGRES_USER: payflow
-      POSTGRES_PASSWORD: payflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env, see .env.example}
     ports:
       - "5432:5432"
     volumes:
@@ -33,7 +33,7 @@ services:
     environment:
       POSTGRES_DB: ledger_db
       POSTGRES_USER: payflow
-      POSTGRES_PASSWORD: payflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env, see .env.example}
     ports:
       - "5433:5432"
     volumes:
@@ -49,7 +49,7 @@ services:
     environment:
       POSTGRES_DB: fraud_db
       POSTGRES_USER: payflow
-      POSTGRES_PASSWORD: payflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env, see .env.example}
     ports:
       - "5434:5432"
     volumes:
@@ -65,7 +65,7 @@ services:
     environment:
       POSTGRES_DB: notifications_db
       POSTGRES_USER: payflow
-      POSTGRES_PASSWORD: payflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env, see .env.example}
     ports:
       - "5435:5432"
     volumes:
@@ -81,7 +81,7 @@ services:
     environment:
       POSTGRES_DB: authorization_db
       POSTGRES_USER: payflow
-      POSTGRES_PASSWORD: payflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env, see .env.example}
     ports:
       - "5436:5432"
     volumes:
@@ -127,7 +127,7 @@ services:
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set in .env, see .env.example}
     volumes:
       - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
@@ -143,7 +143,7 @@ services:
       dockerfile: src/Services/Authorization/Payflow.Authorization.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__AuthorizationDb: "Host=postgres-authorization;Port=5432;Database=authorization_db;Username=payflow;Password=payflow"
+      ConnectionStrings__AuthorizationDb: "Host=postgres-authorization;Port=5432;Database=authorization_db;Username=payflow;Password=${POSTGRES_PASSWORD:?set in .env, see .env.example}"
       RabbitMq__Host: "rabbitmq"
       Otel__CollectorUrl: "http://otel-collector:4317"
       # Chance (0.0-1.0) that the simulated card network call fails outright.
@@ -166,7 +166,7 @@ services:
       dockerfile: src/Services/Ledger/Payflow.Ledger.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__LedgerDb: "Host=postgres-ledger;Port=5432;Database=ledger_db;Username=payflow;Password=payflow"
+      ConnectionStrings__LedgerDb: "Host=postgres-ledger;Port=5432;Database=ledger_db;Username=payflow;Password=${POSTGRES_PASSWORD:?set in .env, see .env.example}"
       RabbitMq__Host: "rabbitmq"
       Otel__CollectorUrl: "http://otel-collector:4317"
     depends_on:
@@ -185,7 +185,7 @@ services:
       dockerfile: src/Services/Fraud/Payflow.Fraud.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__FraudDb: "Host=postgres-fraud;Port=5432;Database=fraud_db;Username=payflow;Password=payflow"
+      ConnectionStrings__FraudDb: "Host=postgres-fraud;Port=5432;Database=fraud_db;Username=payflow;Password=${POSTGRES_PASSWORD:?set in .env, see .env.example}"
       RabbitMq__Host: "rabbitmq"
       Otel__CollectorUrl: "http://otel-collector:4317"
     depends_on:
@@ -204,7 +204,7 @@ services:
       dockerfile: src/Services/Notifications/Payflow.Notifications.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__NotificationsDb: "Host=postgres-notifications;Port=5432;Database=notifications_db;Username=payflow;Password=payflow"
+      ConnectionStrings__NotificationsDb: "Host=postgres-notifications;Port=5432;Database=notifications_db;Username=payflow;Password=${POSTGRES_PASSWORD:?set in .env, see .env.example}"
       RabbitMq__Host: "rabbitmq"
       Otel__CollectorUrl: "http://otel-collector:4317"
     depends_on:
@@ -223,7 +223,7 @@ services:
       dockerfile: src/Services/Payments/Payflow.Payments.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__PaymentsDb: "Host=postgres-payments;Port=5432;Database=payments_db;Username=payflow;Password=payflow"
+      ConnectionStrings__PaymentsDb: "Host=postgres-payments;Port=5432;Database=payments_db;Username=payflow;Password=${POSTGRES_PASSWORD:?set in .env, see .env.example}"
       RabbitMq__Host: "rabbitmq"
       Otel__CollectorUrl: "http://otel-collector:4317"
     depends_on:
