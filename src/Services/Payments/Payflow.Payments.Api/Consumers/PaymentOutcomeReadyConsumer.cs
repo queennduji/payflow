@@ -1,5 +1,6 @@
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
+using Payflow.Payments.Application.Observability;
 using Payflow.Payments.Infrastructure.Persistence;
 using Payflow.Shared.Contracts.Messages;
 
@@ -7,8 +8,10 @@ namespace Payflow.Payments.Api.Consumers;
 
 /// <summary>
 /// Bridges the saga's terminal outcome back to whoever is holding a pending
-/// <c>IRequestClient&lt;ProcessPayment&gt;</c> await. A no-op if the original caller already gave
-/// up and got a 202 instead — there's nothing stored to respond to in that case.
+/// <c>IRequestClient&lt;ProcessPayment&gt;</c> await. Sending the reply is a no-op if the original
+/// caller already gave up and got a 202 instead — there's nothing stored to respond to in that
+/// case — but this message still fires exactly once per terminal outcome, which makes it the right
+/// place to record <see cref="PaymentMetrics"/>.
 /// </summary>
 /// <remarks>
 /// The EF outbox's "dispatch immediately after SaveChanges" fast path can beat the *outer*
@@ -17,7 +20,7 @@ namespace Payflow.Payments.Api.Consumers;
 /// Rather than rely on exact ordering between two frameworks' commit/dispatch internals, this
 /// consumer polls (briefly — milliseconds in practice) until the write is visible before replying.
 /// </remarks>
-public sealed class PaymentOutcomeReadyConsumer(IDbContextFactory<PaymentsDbContext> contextFactory) : IConsumer<PaymentOutcomeReady>
+public sealed class PaymentOutcomeReadyConsumer(IDbContextFactory<PaymentsDbContext> contextFactory, PaymentMetrics metrics) : IConsumer<PaymentOutcomeReady>
 {
     private const int MaxAttempts = 20;
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(50);
@@ -25,6 +28,8 @@ public sealed class PaymentOutcomeReadyConsumer(IDbContextFactory<PaymentsDbCont
     public async Task Consume(ConsumeContext<PaymentOutcomeReady> context)
     {
         var message = context.Message;
+        metrics.RecordProcessed(message.Status);
+
         if (message.ResponseAddress is null || message.RequestId is null)
             return;
 

@@ -92,6 +92,51 @@ services:
       timeout: 3s
       retries: 10
 
+  # --- Observability stack: every service ships traces/metrics/logs via OTLP to the collector,
+  # which fans them out to the three storage backends. Grafana is the one place to look at all
+  # three, correlated.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ../observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    depends_on:
+      - tempo
+      - loki
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ../observability/tempo.yaml:/etc/tempo.yaml:ro
+
+  loki:
+    image: grafana/loki:3.3.2
+    ports:
+      - "3100:3100"
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    volumes:
+      - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - otel-collector
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+
   authorization-api:
     build:
       context: ../..
@@ -100,7 +145,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__AuthorizationDb: "Host=postgres-authorization;Port=5432;Database=authorization_db;Username=payflow;Password=payflow"
       RabbitMq__Host: "rabbitmq"
-      # Chance (0.0-1.0) that the simulated card network call fails outright — see ADR-0008.
+      Otel__CollectorUrl: "http://otel-collector:4317"
+      # Chance (0.0-1.0) that the simulated card network call fails outright.
       # Bump this via `docker compose up -d --build authorization-api` after editing, or
       # `docker compose run -e Chaos__CardNetworkFaultRate=0.6 ...`, to watch the circuit breaker trip.
       Chaos__CardNetworkFaultRate: "0.0"
@@ -109,6 +155,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     ports:
       - "5081:8080"
 
@@ -120,11 +168,14 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__LedgerDb: "Host=postgres-ledger;Port=5432;Database=ledger_db;Username=payflow;Password=payflow"
       RabbitMq__Host: "rabbitmq"
+      Otel__CollectorUrl: "http://otel-collector:4317"
     depends_on:
       postgres-ledger:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     ports:
       - "5204:8080"
 
@@ -136,11 +187,14 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__FraudDb: "Host=postgres-fraud;Port=5432;Database=fraud_db;Username=payflow;Password=payflow"
       RabbitMq__Host: "rabbitmq"
+      Otel__CollectorUrl: "http://otel-collector:4317"
     depends_on:
       postgres-fraud:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     ports:
       - "5277:8080"
 
@@ -152,11 +206,14 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__NotificationsDb: "Host=postgres-notifications;Port=5432;Database=notifications_db;Username=payflow;Password=payflow"
       RabbitMq__Host: "rabbitmq"
+      Otel__CollectorUrl: "http://otel-collector:4317"
     depends_on:
       postgres-notifications:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     ports:
       - "5229:8080"
 
@@ -168,11 +225,14 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__PaymentsDb: "Host=postgres-payments;Port=5432;Database=payments_db;Username=payflow;Password=payflow"
       RabbitMq__Host: "rabbitmq"
+      Otel__CollectorUrl: "http://otel-collector:4317"
     depends_on:
       postgres-payments:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
       authorization-api:
         condition: service_started
       ledger-api:
@@ -194,11 +254,13 @@ services:
       ReverseProxy__Clusters__ledger__Destinations__destination1__Address: "http://ledger-api:8080"
       ReverseProxy__Clusters__fraud__Destinations__destination1__Address: "http://fraud-api:8080"
       ReverseProxy__Clusters__notifications__Destinations__destination1__Address: "http://notifications-api:8080"
+      Otel__CollectorUrl: "http://otel-collector:4317"
     depends_on:
       - payments-api
       - ledger-api
       - fraud-api
       - notifications-api
+      - otel-collector
     ports:
       - "8080:8080"
 

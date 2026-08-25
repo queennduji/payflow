@@ -7,9 +7,11 @@ using Payflow.Payments.Application.Saga;
 using Payflow.Payments.Infrastructure;
 using Payflow.Payments.Infrastructure.Persistence;
 using Payflow.Shared.Api;
+using Payflow.Shared.Api.Observability;
 using Payflow.Shared.Contracts.Messages;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddPayflowObservability("payments-api");
 
 builder.Services.AddPaymentsApplication();
 builder.Services.AddPaymentsInfrastructure(builder.Configuration);
@@ -65,6 +67,7 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+app.UsePayflowObservability();
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())

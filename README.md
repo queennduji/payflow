@@ -4,9 +4,9 @@ A payment gateway built as a microservices platform: saga-orchestrated authoriza
 double-entry ledger, fraud review, and merchant notifications — with the failure modes that come
 with distributed systems treated as first-class design concerns rather than afterthoughts.
 
-This is a portfolio project, built in phases, each one a working, runnable increment. **Phases 0–3**
-(vertical slice → saga orchestration → resilience engineering) are implemented today; the phases
-after that are the roadmap.
+This is a portfolio project, built in phases, each one a working, runnable increment. **Phases 0–4**
+(vertical slice → saga orchestration → resilience engineering → observability) are implemented
+today; the phases after that are the roadmap.
 
 ## Why this exists
 
@@ -63,6 +63,10 @@ Full diagrams (container view, sequence diagram, bounded contexts) are in
   backoff, and a circuit breaker (Polly v8), with a configurable fault-injection rate so the whole
   chain is actually exercisable, not just present. Exhausted retries or an open circuit degrade to
   an ordinary `processor_unavailable` decline rather than a fault.
+- **Distributed tracing, metrics, and structured logs, correlated** — every service ships OTLP to a
+  collector that fans out to Tempo, Prometheus, and Loki, with trace/span IDs stamped on every log
+  line so a span and its logs can be found from each other in Grafana. See
+  [ADR-0007](docs/adr/0007-otel-collector-as-telemetry-fan-out.md).
 
 ## Running it
 
@@ -72,9 +76,10 @@ Full diagrams (container view, sequence diagram, bounded contexts) are in
 docker compose -f deploy/docker-compose/docker-compose.yml up --build
 ```
 
-This brings up RabbitMQ, five Postgres instances, and six services: `gateway` (`:8080`),
+This brings up RabbitMQ, five Postgres instances, six services — `gateway` (`:8080`),
 `payments-api` (`:5218`), `authorization-api` (`:5081`), `ledger-api` (`:5204`), `fraud-api`
-(`:5277`), `notifications-api` (`:5229`). Each service applies its own EF Core migrations on
+(`:5277`), `notifications-api` (`:5229`) — and the observability stack: an OpenTelemetry Collector,
+Tempo, Loki, Prometheus, and Grafana (`:3000`). Each service applies its own EF Core migrations on
 startup, so there's nothing else to set up. RabbitMQ's management UI is at
 `http://localhost:15672` (guest/guest) — useful for watching the exchanges/queues the saga creates.
 
@@ -145,6 +150,22 @@ failures land inside the sampling window — a run of fast `Declined` / `process
 responses while the circuit is open, then recovery once the break duration elapses. Set the rate
 back to `0.0` (or just restart the container) to return to normal.
 
+### Watching a payment's trace, metrics, and logs
+
+`docker compose up` also brings up an OpenTelemetry Collector, Tempo, Loki, and Prometheus, with
+Grafana wired to all three. Run the demo `curl` sequence above, then:
+
+1. Open Grafana at `http://localhost:3000` (`admin`/`admin`) and go to **Explore**.
+2. Pick the **Tempo** datasource and search for a recent trace — a payment's spans show up across
+   `gateway` → `payments-api` → (over the bus) `fraud-api` / `authorization-api` / `ledger-api` →
+   `notifications-api`, in one place.
+3. Click a span, then "Logs for this span" to jump straight to its correlated lines in Loki.
+4. The **PayFlow Overview** dashboard (provisioned automatically, under the PayFlow folder) plots
+   payment outcomes and request latency live as you fire more `curl` requests.
+
+Cranking `Chaos__CardNetworkFaultRate` back up (previous section) is a good way to see retries and
+an open circuit breaker show up as span events and log lines, not just inferred from response codes.
+
 ### Local development without Docker
 
 ```bash
@@ -166,7 +187,7 @@ Each phase after Phase 1 ships as its own working increment.
 | 1 – done | Vertical slice: synchronous HTTP flow, idempotency, double-entry ledger, unit tests |
 | 2 – done | Saga orchestration (MassTransit) + transactional outbox; Fraud and Notifications join the flow; compensating transactions |
 | 3 – done | Resilience engineering: Polly v8 timeout/retry/circuit breaker around the mock card network, configurable fault injection, EF Core connection resiliency |
-| 4 | Observability: OpenTelemetry tracing/metrics, structured logs, local Grafana/Prometheus/Tempo/Loki |
+| 4 – done | Observability: OpenTelemetry tracing/metrics, Serilog structured logs, local Grafana/Prometheus/Tempo/Loki |
 | 5 | Kubernetes + Helm, deployed locally via `kind` |
 | 6 | Security: Keycloak OIDC, JWT auth, mock tokenization vault |
 | 7 | Testcontainers integration tests, NBomber load tests, chaos test suite |

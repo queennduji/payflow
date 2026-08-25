@@ -6,8 +6,10 @@ using Payflow.Fraud.Application;
 using Payflow.Fraud.Infrastructure;
 using Payflow.Fraud.Infrastructure.Persistence;
 using Payflow.Shared.Api;
+using Payflow.Shared.Api.Observability;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddPayflowObservability("fraud-api");
 
 builder.Services.AddFraudApplication();
 builder.Services.AddFraudInfrastructure(builder.Configuration);
@@ -49,6 +51,7 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+app.UsePayflowObservability();
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
