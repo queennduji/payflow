@@ -46,6 +46,7 @@ Thumbs.db
 .env.local
 appsettings.*.local.json
 **/secrets.json
+values.local.yaml
 
 # Kubernetes local
 kubeconfig*.yaml

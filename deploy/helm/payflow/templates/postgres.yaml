@@ -1,0 +1,68 @@
+{{- range .Values.postgres }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-{{ .name }}
+  labels:
+    {{- include "payflow.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: postgres-{{ .name }}
+spec:
+  serviceName: postgres-{{ .name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres-{{ .name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-{{ .name }}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: {{ .database | quote }}
+            - name: POSTGRES_USER
+              value: payflow
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: payflow-secrets
+                  key: postgres-password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "payflow", "-d", {{ .database | quote }}]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-{{ .name }}
+  labels:
+    {{- include "payflow.labels" $ | nindent 4 }}
+    app.kubernetes.io/name: postgres-{{ .name }}
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: postgres-{{ .name }}
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+{{- end }}

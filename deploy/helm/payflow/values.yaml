@@ -1,0 +1,112 @@
+# Local-only defaults. Override with --set or a gitignored values.local.yaml at install time —
+# same pattern as deploy/docker-compose/.env vs .env.example.
+secrets:
+  postgresPassword: local-dev-only
+  grafanaAdminPassword: local-dev-only
+
+image:
+  # Images are built locally and `kind load docker-image`d — see deploy/kind/build-and-load.sh.
+  # Repository names below must match what that script tags them as.
+  tag: local
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 96Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+# One entry per .NET service. Port and health path are uniform (every service exposes the same
+# ASP.NET Core shape), so only what actually differs per service — image, env — is listed here;
+# templates/services.yaml ranges over this once instead of six near-identical Deployments.
+services:
+  - name: gateway
+    image: payflow-gateway
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ReverseProxy__Clusters__payments__Destinations__destination1__Address: "http://payments-api:8080"
+      ReverseProxy__Clusters__ledger__Destinations__destination1__Address: "http://ledger-api:8080"
+      ReverseProxy__Clusters__fraud__Destinations__destination1__Address: "http://fraud-api:8080"
+      ReverseProxy__Clusters__notifications__Destinations__destination1__Address: "http://notifications-api:8080"
+      Otel__CollectorUrl: "http://otel-collector:4317"
+
+  - name: payments-api
+    image: payflow-payments-api
+    dependsOnPostgres: postgres-payments
+    dependsOnRabbitMq: true
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__PaymentsDb: "Host=postgres-payments;Port=5432;Database=payments_db;Username=payflow;Password=$(POSTGRES_PASSWORD)"
+      RabbitMq__Host: "rabbitmq"
+      Otel__CollectorUrl: "http://otel-collector:4317"
+
+  - name: authorization-api
+    image: payflow-authorization-api
+    dependsOnPostgres: postgres-authorization
+    dependsOnRabbitMq: true
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__AuthorizationDb: "Host=postgres-authorization;Port=5432;Database=authorization_db;Username=payflow;Password=$(POSTGRES_PASSWORD)"
+      RabbitMq__Host: "rabbitmq"
+      Otel__CollectorUrl: "http://otel-collector:4317"
+      Chaos__CardNetworkFaultRate: "0.0"
+
+  - name: ledger-api
+    image: payflow-ledger-api
+    dependsOnPostgres: postgres-ledger
+    dependsOnRabbitMq: true
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__LedgerDb: "Host=postgres-ledger;Port=5432;Database=ledger_db;Username=payflow;Password=$(POSTGRES_PASSWORD)"
+      RabbitMq__Host: "rabbitmq"
+      Otel__CollectorUrl: "http://otel-collector:4317"
+
+  - name: fraud-api
+    image: payflow-fraud-api
+    dependsOnPostgres: postgres-fraud
+    dependsOnRabbitMq: true
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__FraudDb: "Host=postgres-fraud;Port=5432;Database=fraud_db;Username=payflow;Password=$(POSTGRES_PASSWORD)"
+      RabbitMq__Host: "rabbitmq"
+      Otel__CollectorUrl: "http://otel-collector:4317"
+
+  - name: notifications-api
+    image: payflow-notifications-api
+    dependsOnPostgres: postgres-notifications
+    dependsOnRabbitMq: true
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__NotificationsDb: "Host=postgres-notifications;Port=5432;Database=notifications_db;Username=payflow;Password=$(POSTGRES_PASSWORD)"
+      RabbitMq__Host: "rabbitmq"
+      Otel__CollectorUrl: "http://otel-collector:4317"
+
+# One entry per database. templates/postgres.yaml ranges over this to emit one StatefulSet + PVC +
+# Service per instance — same reasoning as services.yaml above.
+postgres:
+  - name: payments
+    database: payments_db
+  - name: ledger
+    database: ledger_db
+  - name: fraud
+    database: fraud_db
+  - name: notifications
+    database: notifications_db
+  - name: authorization
+    database: authorization_db
+
+rabbitmq:
+  image: rabbitmq:4-management-alpine
+
+observability:
+  otelCollectorImage: otel/opentelemetry-collector-contrib:0.116.1
+  tempoImage: grafana/tempo:2.6.1
+  lokiImage: grafana/loki:3.3.2
+  prometheusImage: prom/prometheus:v3.1.0
+  grafanaImage: grafana/grafana:11.4.0
+
+ingress:
+  host: payflow.local
+  className: nginx

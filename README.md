@@ -4,9 +4,9 @@ A payment gateway built as a microservices platform: saga-orchestrated authoriza
 double-entry ledger, fraud review, and merchant notifications — with the failure modes that come
 with distributed systems treated as first-class design concerns rather than afterthoughts.
 
-This is a portfolio project, built in phases, each one a working, runnable increment. **Phases 0–4**
-(vertical slice → saga orchestration → resilience engineering → observability) are implemented
-today; the phases after that are the roadmap.
+This is a portfolio project, built in phases, each one a working, runnable increment. **Phases 0–5**
+(vertical slice → saga orchestration → resilience engineering → observability → Kubernetes/Helm) are
+implemented today; the phases after that are the roadmap.
 
 ## Why this exists
 
@@ -67,6 +67,8 @@ Full diagrams (container view, sequence diagram, bounded contexts) are in
   collector that fans out to Tempo, Prometheus, and Loki, with trace/span IDs stamped on every log
   line so a span and its logs can be found from each other in Grafana. See
   [ADR-0007](docs/adr/0007-otel-collector-as-telemetry-fan-out.md).
+- **The same platform as one Helm chart**, deployable to a local `kind` cluster — see
+  [`docs/kubernetes.md`](docs/kubernetes.md).
 
 ## Running it
 
@@ -194,7 +196,7 @@ Each phase after Phase 1 ships as its own working increment.
 | 2 – done | Saga orchestration (MassTransit) + transactional outbox; Fraud and Notifications join the flow; compensating transactions |
 | 3 – done | Resilience engineering: Polly v8 timeout/retry/circuit breaker around the mock card network, configurable fault injection, EF Core connection resiliency |
 | 4 – done | Observability: OpenTelemetry tracing/metrics, Serilog structured logs, local Grafana/Prometheus/Tempo/Loki |
-| 5 | Kubernetes + Helm, deployed locally via `kind` |
+| 5 – done | Kubernetes + Helm, deployed locally via `kind` |
 | 6 | Security: Keycloak OIDC, JWT auth, mock tokenization vault |
 | 7 | Testcontainers integration tests, NBomber load tests, chaos test suite |
 | 8 | README/diagram polish, demo recording |

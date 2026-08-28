@@ -1,0 +1,6 @@
+apiVersion: v2
+name: payflow
+description: The PayFlow payment gateway platform — 6 services, 5 Postgres instances, RabbitMQ, and the observability stack, as one chart.
+type: application
+version: 0.1.0
+appVersion: "1.0"
