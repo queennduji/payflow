@@ -34,6 +34,12 @@
     <Project Path="src/Services/Payments/Payflow.Payments.Domain/Payflow.Payments.Domain.csproj" />
     <Project Path="src/Services/Payments/Payflow.Payments.Infrastructure/Payflow.Payments.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Vault/">
+    <Project Path="src/Services/Vault/Payflow.Vault.Api/Payflow.Vault.Api.csproj" />
+    <Project Path="src/Services/Vault/Payflow.Vault.Application/Payflow.Vault.Application.csproj" />
+    <Project Path="src/Services/Vault/Payflow.Vault.Domain/Payflow.Vault.Domain.csproj" />
+    <Project Path="src/Services/Vault/Payflow.Vault.Infrastructure/Payflow.Vault.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/Payflow.Shared.Api/Payflow.Shared.Api.csproj" />
     <Project Path="src/Shared/Payflow.Shared.Contracts/Payflow.Shared.Contracts.csproj" />
@@ -46,5 +52,6 @@
     <Project Path="tests/UnitTests/Payflow.Ledger.UnitTests/Payflow.Ledger.UnitTests.csproj" />
     <Project Path="tests/UnitTests/Payflow.Notifications.UnitTests/Payflow.Notifications.UnitTests.csproj" />
     <Project Path="tests/UnitTests/Payflow.Payments.UnitTests/Payflow.Payments.UnitTests.csproj" />
+    <Project Path="tests/UnitTests/Payflow.Vault.UnitTests/Payflow.Vault.UnitTests.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,47 @@
+{
+  "realm": "payflow",
+  "enabled": true,
+  "sslRequired": "none",
+  "roles": {
+    "realm": [
+      { "name": "merchant", "description": "Can submit payments and read their own merchant's data." }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "payflow-client",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "payflow-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "payflow-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "demo-merchant",
+      "enabled": true,
+      "email": "demo-merchant@example.com",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Merchant",
+      "requiredActions": [],
+      "credentials": [
+        { "type": "password", "value": "demo-merchant", "temporary": false }
+      ],
+      "realmRoles": ["merchant", "offline_access", "uma_authorization"]
+    }
+  ]
+}

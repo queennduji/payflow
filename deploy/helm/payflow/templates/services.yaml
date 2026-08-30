@@ -46,6 +46,10 @@ spec:
                 secretKeyRef:
                   name: payflow-secrets
                   key: postgres-password
+            - name: Authentication__Authority
+              value: {{ $.Values.authentication.authority | quote }}
+            - name: Authentication__Audience
+              value: {{ $.Values.authentication.audience | quote }}
             {{- range $key, $value := .env }}
             - name: {{ $key }}
               value: {{ $value | quote }}

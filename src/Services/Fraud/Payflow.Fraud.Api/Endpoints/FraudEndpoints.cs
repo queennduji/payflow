@@ -17,7 +17,8 @@ public static class FraudEndpoints
         .WithName("GetFraudCheck")
         .WithSummary("Inspect the fraud decision recorded for a payment (demo/audit visibility).")
         .Produces<FraudCheckResult>()
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .RequireAuthorization();
 
         return app;
     }

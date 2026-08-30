@@ -18,7 +18,8 @@ public static class LedgerEndpoints
         .WithName("PostLedgerEntry")
         .WithSummary("Post a balanced debit/credit pair for a captured payment. Idempotent per PaymentId.")
         .Produces<LedgerEntryGroupResponse>()
-        .ProducesProblem(StatusCodes.Status400BadRequest);
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .RequireAuthorization();
 
         app.MapGet("/accounts/{accountId}/balance", async (string accountId, ISender sender, CancellationToken ct) =>
         {
@@ -29,7 +30,8 @@ public static class LedgerEndpoints
         .WithName("GetAccountBalance")
         .WithSummary("Get an account's current balance, derived from its posted ledger lines.")
         .Produces<AccountBalanceResponse>()
-        .ProducesProblem(StatusCodes.Status404NotFound);
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .RequireAuthorization();
 
         return app;
     }

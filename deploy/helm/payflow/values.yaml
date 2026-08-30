@@ -4,6 +4,12 @@ secrets:
   postgresPassword: local-dev-only
   grafanaAdminPassword: local-dev-only
 
+# Injected into every service's env alongside POSTGRES_PASSWORD (see templates/services.yaml) —
+# every service validates its own JWT against the same Keycloak realm.
+authentication:
+  authority: http://keycloak:8080/realms/payflow
+  audience: payflow-api
+
 image:
   # Images are built locally and `kind load docker-image`d — see deploy/kind/build-and-load.sh.
   # Repository names below must match what that script tags them as.
@@ -30,6 +36,7 @@ services:
       ReverseProxy__Clusters__ledger__Destinations__destination1__Address: "http://ledger-api:8080"
       ReverseProxy__Clusters__fraud__Destinations__destination1__Address: "http://fraud-api:8080"
       ReverseProxy__Clusters__notifications__Destinations__destination1__Address: "http://notifications-api:8080"
+      ReverseProxy__Clusters__vault__Destinations__destination1__Address: "http://vault-api:8080"
       Otel__CollectorUrl: "http://otel-collector:4317"
 
   - name: payments-api
@@ -83,6 +90,14 @@ services:
       RabbitMq__Host: "rabbitmq"
       Otel__CollectorUrl: "http://otel-collector:4317"
 
+  - name: vault-api
+    image: payflow-vault-api
+    dependsOnPostgres: postgres-vault
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__VaultDb: "Host=postgres-vault;Port=5432;Database=vault_db;Username=payflow;Password=$(POSTGRES_PASSWORD)"
+      Otel__CollectorUrl: "http://otel-collector:4317"
+
 # One entry per database. templates/postgres.yaml ranges over this to emit one StatefulSet + PVC +
 # Service per instance — same reasoning as services.yaml above.
 postgres:
@@ -96,9 +111,14 @@ postgres:
     database: notifications_db
   - name: authorization
     database: authorization_db
+  - name: vault
+    database: vault_db
 
 rabbitmq:
   image: rabbitmq:4-management-alpine
+
+keycloak:
+  image: quay.io/keycloak/keycloak:26.0
 
 observability:
   otelCollectorImage: otel/opentelemetry-collector-contrib:0.116.1

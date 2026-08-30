@@ -16,7 +16,8 @@ public static class NotificationEndpoints
         .WithTags("Notifications")
         .WithName("ListNotifications")
         .WithSummary("List simulated webhook deliveries for a merchant (demo/audit visibility).")
-        .Produces<IReadOnlyList<NotificationResult>>();
+        .Produces<IReadOnlyList<NotificationResult>>()
+        .RequireAuthorization();
 
         return app;
     }

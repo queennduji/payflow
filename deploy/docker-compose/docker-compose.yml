@@ -12,6 +12,33 @@ services:
       timeout: 5s
       retries: 12
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Pins the issuer/JWKS URLs baked into every token to this exact URL regardless of whether
+      # Keycloak was reached via the docker network (services, port 8080) or the published host
+      # port (the demo's own curl calls, port 8081). A bare hostname isn't enough — Keycloak still
+      # echoes back whatever port the request arrived on — a full URL plus hostname-strict is what
+      # actually fixes it.
+      KC_HOSTNAME: http://keycloak:8080
+      KC_HOSTNAME_STRICT: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ../keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    ports:
+      - "8081:8080"
+    healthcheck:
+      # Keycloak 26 serves /health on its separate management port (9000), not the main one (8080).
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q 'UP' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
+
   postgres-payments:
     image: postgres:17-alpine
     environment:
@@ -92,6 +119,22 @@ services:
       timeout: 3s
       retries: 10
 
+  postgres-vault:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: vault_db
+      POSTGRES_USER: payflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env, see .env.example}
+    ports:
+      - "5437:5432"
+    volumes:
+      - vault-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payflow -d vault_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # --- Observability stack: every service ships traces/metrics/logs via OTLP to the collector,
   # which fans them out to the three storage backends. Grafana is the one place to look at all
   # three, correlated.
@@ -146,6 +189,8 @@ services:
       ConnectionStrings__AuthorizationDb: "Host=postgres-authorization;Port=5432;Database=authorization_db;Username=payflow;Password=${POSTGRES_PASSWORD:?set in .env, see .env.example}"
       RabbitMq__Host: "rabbitmq"
       Otel__CollectorUrl: "http://otel-collector:4317"
+      Authentication__Authority: "http://keycloak:8080/realms/payflow"
+      Authentication__Audience: "payflow-api"
       # Chance (0.0-1.0) that the simulated card network call fails outright.
       # Bump this via `docker compose up -d --build authorization-api` after editing, or
       # `docker compose run -e Chaos__CardNetworkFaultRate=0.6 ...`, to watch the circuit breaker trip.
@@ -169,6 +214,8 @@ services:
       ConnectionStrings__LedgerDb: "Host=postgres-ledger;Port=5432;Database=ledger_db;Username=payflow;Password=${POSTGRES_PASSWORD:?set in .env, see .env.example}"
       RabbitMq__Host: "rabbitmq"
       Otel__CollectorUrl: "http://otel-collector:4317"
+      Authentication__Authority: "http://keycloak:8080/realms/payflow"
+      Authentication__Audience: "payflow-api"
     depends_on:
       postgres-ledger:
         condition: service_healthy
@@ -188,6 +235,8 @@ services:
       ConnectionStrings__FraudDb: "Host=postgres-fraud;Port=5432;Database=fraud_db;Username=payflow;Password=${POSTGRES_PASSWORD:?set in .env, see .env.example}"
       RabbitMq__Host: "rabbitmq"
       Otel__CollectorUrl: "http://otel-collector:4317"
+      Authentication__Authority: "http://keycloak:8080/realms/payflow"
+      Authentication__Audience: "payflow-api"
     depends_on:
       postgres-fraud:
         condition: service_healthy
@@ -207,6 +256,8 @@ services:
       ConnectionStrings__NotificationsDb: "Host=postgres-notifications;Port=5432;Database=notifications_db;Username=payflow;Password=${POSTGRES_PASSWORD:?set in .env, see .env.example}"
       RabbitMq__Host: "rabbitmq"
       Otel__CollectorUrl: "http://otel-collector:4317"
+      Authentication__Authority: "http://keycloak:8080/realms/payflow"
+      Authentication__Audience: "payflow-api"
     depends_on:
       postgres-notifications:
         condition: service_healthy
@@ -217,6 +268,24 @@ services:
     ports:
       - "5229:8080"
 
+  vault-api:
+    build:
+      context: ../..
+      dockerfile: src/Services/Vault/Payflow.Vault.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__VaultDb: "Host=postgres-vault;Port=5432;Database=vault_db;Username=payflow;Password=${POSTGRES_PASSWORD:?set in .env, see .env.example}"
+      Otel__CollectorUrl: "http://otel-collector:4317"
+      Authentication__Authority: "http://keycloak:8080/realms/payflow"
+      Authentication__Audience: "payflow-api"
+    depends_on:
+      postgres-vault:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    ports:
+      - "5438:8080"
+
   payments-api:
     build:
       context: ../..
@@ -226,6 +295,8 @@ services:
       ConnectionStrings__PaymentsDb: "Host=postgres-payments;Port=5432;Database=payments_db;Username=payflow;Password=${POSTGRES_PASSWORD:?set in .env, see .env.example}"
       RabbitMq__Host: "rabbitmq"
       Otel__CollectorUrl: "http://otel-collector:4317"
+      Authentication__Authority: "http://keycloak:8080/realms/payflow"
+      Authentication__Audience: "payflow-api"
     depends_on:
       postgres-payments:
         condition: service_healthy
@@ -254,12 +325,16 @@ services:
       ReverseProxy__Clusters__ledger__Destinations__destination1__Address: "http://ledger-api:8080"
       ReverseProxy__Clusters__fraud__Destinations__destination1__Address: "http://fraud-api:8080"
       ReverseProxy__Clusters__notifications__Destinations__destination1__Address: "http://notifications-api:8080"
+      ReverseProxy__Clusters__vault__Destinations__destination1__Address: "http://vault-api:8080"
       Otel__CollectorUrl: "http://otel-collector:4317"
+      Authentication__Authority: "http://keycloak:8080/realms/payflow"
+      Authentication__Audience: "payflow-api"
     depends_on:
       - payments-api
       - ledger-api
       - fraud-api
       - notifications-api
+      - vault-api
       - otel-collector
     ports:
       - "8080:8080"
@@ -270,3 +345,4 @@ volumes:
   fraud-db-data:
   notifications-db-data:
   authorization-db-data:
+  vault-db-data:

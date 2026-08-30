@@ -1,10 +1,12 @@
 # Running PayFlow on Kubernetes
 
-The whole platform — six .NET services, five Postgres instances, RabbitMQ, and the observability
-stack from [ADR-0007](adr/0007-otel-collector-as-telemetry-fan-out.md) — as one Helm chart, deployed
-to a local [kind](https://kind.sigs.k8s.io/) cluster. See
+The whole platform — seven .NET services, six Postgres instances, RabbitMQ, Keycloak, and the
+observability stack from [ADR-0007](adr/0007-otel-collector-as-telemetry-fan-out.md) — as one Helm
+chart, deployed to a local [kind](https://kind.sigs.k8s.io/) cluster. See
 [ADR-0008](adr/0008-hand-rolled-k8s-manifests-over-community-charts.md) for why the chart owns its
-own Postgres/RabbitMQ manifests instead of depending on community charts.
+own Postgres/RabbitMQ manifests instead of depending on community charts, and
+[ADR-0009](adr/0009-tokenization-boundary-and-zero-trust-auth.md) for the tokenization/auth design
+every service here enforces the same way it does under `docker compose up`.
 
 ## Prerequisites
 
@@ -46,7 +48,7 @@ Watch it come up:
 kubectl get pods -n payflow -w
 ```
 
-All ~17 pods should reach `Running`/`1/1` within a few minutes. The five .NET services that talk to
+All ~20 pods should reach `Running`/`1/1` within a few minutes. The services that talk to
 Postgres/RabbitMQ carry an init container that waits for both before the app itself starts — see the
 comment in `templates/services.yaml` for why (Kubernetes has no equivalent to docker-compose's
 `depends_on: condition: service_healthy`, and the app's own startup migration isn't retried).
@@ -63,11 +65,20 @@ The gateway is reachable through ingress-nginx at `payflow.local`. Either add it
 127.0.0.1 payflow.local
 ```
 
-or point `curl` at it directly without touching system files:
+or point `curl` at it directly without touching system files, via `--resolve` as shown below.
+
+Keycloak isn't on the ingress — port-forward it to fetch a token the same way the README does:
 
 ```bash
+kubectl port-forward -n payflow svc/keycloak 8081:8080 &
+
+TOKEN=$(curl -s -X POST http://localhost:8081/realms/payflow/protocol/openid-connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=password&client_id=payflow-client&username=demo-merchant&password=demo-merchant" \
+  | jq -r .access_token)
+
 curl -s --resolve payflow.local:80:127.0.0.1 -X POST http://payflow.local/api/payments \
-  -H "Content-Type: application/json" -H "Idempotency-Key: k8s-demo-1" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -H "Idempotency-Key: k8s-demo-1" \
   -d '{"merchantId":"acme","amount":25,"currency":"USD","paymentMethodRef":"tok_visa"}'
 ```
 

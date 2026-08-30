@@ -21,7 +21,8 @@ public static class AuthorizationEndpoints
         .WithName("Authorize")
         .WithSummary("Authorize (mock) a card charge. Idempotent per PaymentId.")
         .Produces<AuthorizeResponse>()
-        .ProducesProblem(StatusCodes.Status400BadRequest);
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .RequireAuthorization();
 
         return app;
     }

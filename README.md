@@ -4,9 +4,9 @@ A payment gateway built as a microservices platform: saga-orchestrated authoriza
 double-entry ledger, fraud review, and merchant notifications — with the failure modes that come
 with distributed systems treated as first-class design concerns rather than afterthoughts.
 
-This is a portfolio project, built in phases, each one a working, runnable increment. **Phases 0–5**
-(vertical slice → saga orchestration → resilience engineering → observability → Kubernetes/Helm) are
-implemented today; the phases after that are the roadmap.
+This is a portfolio project, built in phases, each one a working, runnable increment. **Phases 0–6**
+(vertical slice → saga orchestration → resilience engineering → observability → Kubernetes/Helm →
+security) are implemented today; the phases after that are the roadmap.
 
 ## Why this exists
 
@@ -69,6 +69,9 @@ Full diagrams (container view, sequence diagram, bounded contexts) are in
   [ADR-0007](docs/adr/0007-otel-collector-as-telemetry-fan-out.md).
 - **The same platform as one Helm chart**, deployable to a local `kind` cluster — see
   [`docs/kubernetes.md`](docs/kubernetes.md).
+- **A tokenization boundary and zero-trust internal auth** — a small Vault service is the only place
+  a card number is ever accepted, and every service (not just the gateway) validates its own
+  Keycloak-issued JWT. See [ADR-0009](docs/adr/0009-tokenization-boundary-and-zero-trust-auth.md).
 
 ## Running it
 
@@ -82,47 +85,69 @@ docker compose -f deploy/docker-compose/docker-compose.yml up --build
 `.env` (gitignored) holds the local Postgres/Grafana passwords — containers on your own machine's
 Docker network, never exposed anywhere, so the placeholder value in `.env.example` is fine as-is.
 
-This brings up RabbitMQ, five Postgres instances, six services — `gateway` (`:8080`),
-`payments-api` (`:5218`), `authorization-api` (`:5081`), `ledger-api` (`:5204`), `fraud-api`
-(`:5277`), `notifications-api` (`:5229`) — and the observability stack: an OpenTelemetry Collector,
-Tempo, Loki, Prometheus, and Grafana (`:3000`). Each service applies its own EF Core migrations on
-startup, so there's nothing else to set up. RabbitMQ's management UI is at
-`http://localhost:15672` (guest/guest) — useful for watching the exchanges/queues the saga creates.
+This brings up RabbitMQ, Keycloak (`:8081`), six Postgres instances, seven services — `gateway`
+(`:8080`), `payments-api` (`:5218`), `authorization-api` (`:5081`), `ledger-api` (`:5204`),
+`fraud-api` (`:5277`), `notifications-api` (`:5229`), `vault-api` (`:5438`) — and the observability
+stack: an OpenTelemetry Collector, Tempo, Loki, Prometheus, and Grafana (`:3000`). Each service
+applies its own EF Core migrations on startup, and Keycloak imports its realm on first boot, so
+there's nothing else to set up. RabbitMQ's management UI is at `http://localhost:15672`
+(guest/guest) — useful for watching the exchanges/queues the saga creates.
 
 ### Demo walkthrough
 
+Every endpoint below requires a valid JWT (see [ADR-0009](docs/adr/0009-tokenization-boundary-and-zero-trust-auth.md)).
+Fetch one from Keycloak first — it's good for a while, so grab it once per shell session:
+
 ```bash
+TOKEN=$(curl -s -X POST http://localhost:8081/realms/payflow/protocol/openid-connect/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=password&client_id=payflow-client&username=demo-merchant&password=demo-merchant" \
+  | jq -r .access_token)
+```
+
+```bash
+# 0. Tokenize a card via the Vault — the full number is accepted here and nowhere else; every
+#    downstream call only ever sees the token it returns:
+curl -s -X POST http://localhost:8080/api/vault/tokenize \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
+  -d '{"cardNumber":"4242424242424242","expiryMonth":12,"expiryYear":2030}' | jq
+
 # 1. Submit a payment (idempotency key required). The saga runs fraud check -> authorize ->
 #    ledger post over RabbitMQ, but POST /payments still blocks and returns the final result:
 curl -s -X POST http://localhost:8080/api/payments \
-  -H "Content-Type: application/json" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
   -H "Idempotency-Key: demo-key-1" \
   -d '{"merchantId":"acme","amount":42.50,"currency":"USD","paymentMethodRef":"tok_visa"}' | jq
 
 # 2. Replay the exact same request — same key, same body — and get the same result back,
 #    no double charge, no second authorization:
 curl -s -X POST http://localhost:8080/api/payments \
-  -H "Content-Type: application/json" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
   -H "Idempotency-Key: demo-key-1" \
   -d '{"merchantId":"acme","amount":42.50,"currency":"USD","paymentMethodRef":"tok_visa"}' | jq
 
 # 3. Check the merchant's ledger balance — it only reflects the one captured payment:
-curl -s http://localhost:8080/api/ledger/accounts/merchant:acme/balance | jq
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/ledger/accounts/merchant:acme/balance | jq
 
 # 4. Force a decline with the magic test token (mirrors how Stripe's test mode works):
 curl -s -X POST http://localhost:8080/api/payments \
-  -H "Content-Type: application/json" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
   -H "Idempotency-Key: demo-key-2" \
   -d '{"merchantId":"acme","amount":10,"currency":"USD","paymentMethodRef":"tok_declined"}' | jq
 
 # 5. Force a fraud rejection with its own magic token (blocked before authorization is ever called):
 curl -s -X POST http://localhost:8080/api/payments \
-  -H "Content-Type: application/json" \
+  -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" \
   -H "Idempotency-Key: demo-key-3" \
   -d '{"merchantId":"acme","amount":10,"currency":"USD","paymentMethodRef":"tok_fraud"}' | jq
 
 # 6. Prove the merchant was notified for each terminal outcome above:
-curl -s "http://localhost:8080/api/notifications?merchantId=acme" | jq
+curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/notifications?merchantId=acme" | jq
+
+# 7. Without a token, every one of the above now fails — the boundary is real, not decorative:
+curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8080/api/payments \
+  -H "Content-Type: application/json" -H "Idempotency-Key: no-token" \
+  -d '{"merchantId":"acme","amount":10,"currency":"USD","paymentMethodRef":"tok_visa"}'
 ```
 
 A payment's `PaymentId` from any response above can also be checked directly —
@@ -146,7 +171,7 @@ docker compose -f deploy/docker-compose/docker-compose.yml up --build -d authori
 # Fire a burst of payments and watch the mix of outcomes:
 for i in $(seq 1 15); do
   curl -s -X POST http://localhost:8080/api/payments \
-    -H "Content-Type: application/json" -H "Idempotency-Key: chaos-$i" \
+    -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -H "Idempotency-Key: chaos-$i" \
     -d '{"merchantId":"chaos","amount":10,"currency":"USD","paymentMethodRef":"tok_visa"}' | jq -c '{status,failureReason}'
 done
 ```
@@ -197,7 +222,7 @@ Each phase after Phase 1 ships as its own working increment.
 | 3 – done | Resilience engineering: Polly v8 timeout/retry/circuit breaker around the mock card network, configurable fault injection, EF Core connection resiliency |
 | 4 – done | Observability: OpenTelemetry tracing/metrics, Serilog structured logs, local Grafana/Prometheus/Tempo/Loki |
 | 5 – done | Kubernetes + Helm, deployed locally via `kind` |
-| 6 | Security: Keycloak OIDC, JWT auth, mock tokenization vault |
+| 6 – done | Security: Keycloak OIDC, JWT auth, mock tokenization vault |
 | 7 | Testcontainers integration tests, NBomber load tests, chaos test suite |
 | 8 | README/diagram polish, demo recording |
 
@@ -209,17 +234,21 @@ reasoning behind what's built so far.
 ```
 src/
   Gateway/Payflow.Gateway/                YARP reverse proxy
-  Services/{Payments,Authorization,Ledger,Fraud,Notifications}/
+  Services/{Payments,Authorization,Ledger,Fraud,Notifications,Vault}/
     Payflow.<Service>.Domain/             Entities, value objects, invariants — no framework deps
     Payflow.<Service>.Application/        MediatR commands/queries, ports (interfaces); the saga
                                            state machine lives in Payments.Application/Saga/
-    Payflow.<Service>.Infrastructure/     EF Core (+ MassTransit outbox) — implements the ports
+    Payflow.<Service>.Infrastructure/     EF Core (+ MassTransit outbox where used) — implements the ports
     Payflow.<Service>.Api/                Minimal API endpoints, MassTransit consumers, composition root
   Shared/
     Payflow.Shared.Kernel/                Entity, AggregateRoot, ValueObject, Result, Money
     Payflow.Shared.Contracts/             Cross-service HTTP DTOs and bus message contracts
-    Payflow.Shared.Api/                   Result-to-HTTP mapping, global exception handling
+    Payflow.Shared.Api/                   Result-to-HTTP mapping, global exception handling,
+                                           observability + JWT auth wiring
 tests/UnitTests/                          xUnit + FluentAssertions + NSubstitute + MassTransit ITestHarness
-deploy/docker-compose/                    Local multi-service orchestration (RabbitMQ + 5 Postgres + 6 services)
+deploy/
+  docker-compose/                         Local multi-service orchestration (RabbitMQ, Keycloak, 6 Postgres, 7 services)
+  helm/payflow/                           The same platform as one Helm chart (see docs/kubernetes.md)
+  kind/                                   Local kind cluster config + build/load scripts
 docs/                                     Architecture notes and ADRs
 ```
