@@ -86,7 +86,7 @@ sequenceDiagram
     participant N as Notifications
 
     C->>P: POST /payments (Idempotency-Key)
-    P->>P: Idempotency lookup; Payment.Submit() -> Pending
+    P->>P: Idempotency lookup, then Payment.Submit() -> Pending
     P->>Saga: ProcessPayment (via IRequestClient, 10s bound)
     Saga->>F: CheckFraud
     alt fraud rejects
