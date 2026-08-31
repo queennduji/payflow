@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="FluentAssertions" Version="8.10.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.14.0" />
+    <PackageReference Include="Testcontainers.RabbitMq" Version="4.14.0" />
+    <PackageReference Include="Testcontainers.Keycloak" Version="4.14.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!--
+    Every service's Program.cs uses top-level statements, so each Api assembly exposes its own
+    `public partial class Program` in the global namespace. Referencing five of them normally would
+    make `Program` ambiguous in this project; an alias per reference plus `extern alias` at each
+    use site is the documented way to host multiple ASP.NET Core apps in one test project.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Services\Payments\Payflow.Payments.Api\Payflow.Payments.Api.csproj" Aliases="PaymentsApi" />
+    <ProjectReference Include="..\..\..\src\Services\Authorization\Payflow.Authorization.Api\Payflow.Authorization.Api.csproj" Aliases="AuthorizationApi" />
+    <ProjectReference Include="..\..\..\src\Services\Ledger\Payflow.Ledger.Api\Payflow.Ledger.Api.csproj" Aliases="LedgerApi" />
+    <ProjectReference Include="..\..\..\src\Services\Fraud\Payflow.Fraud.Api\Payflow.Fraud.Api.csproj" Aliases="FraudApi" />
+    <ProjectReference Include="..\..\..\src\Services\Notifications\Payflow.Notifications.Api\Payflow.Notifications.Api.csproj" Aliases="NotificationsApi" />
+  </ItemGroup>
+
+</Project>

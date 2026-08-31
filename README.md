@@ -4,9 +4,9 @@ A payment gateway built as a microservices platform: saga-orchestrated authoriza
 double-entry ledger, fraud review, and merchant notifications — with the failure modes that come
 with distributed systems treated as first-class design concerns rather than afterthoughts.
 
-This is a portfolio project, built in phases, each one a working, runnable increment. **Phases 0–6**
+This is a portfolio project, built in phases, each one a working, runnable increment. **Phases 0–7**
 (vertical slice → saga orchestration → resilience engineering → observability → Kubernetes/Helm →
-security) are implemented today; the phases after that are the roadmap.
+security → testing depth) are implemented today; the phases after that are the roadmap.
 
 ## Why this exists
 
@@ -72,6 +72,10 @@ Full diagrams (container view, sequence diagram, bounded contexts) are in
 - **A tokenization boundary and zero-trust internal auth** — a small Vault service is the only place
   a card number is ever accepted, and every service (not just the gateway) validates its own
   Keycloak-issued JWT. See [ADR-0009](docs/adr/0009-tokenization-boundary-and-zero-trust-auth.md).
+- **Integration tests against real infrastructure, not mocks** — the saga's happy/decline/fraud
+  paths, JWT validation, and Phase 3's fault-injection knob all get exercised through real,
+  disposable Postgres/RabbitMQ/Keycloak containers via Testcontainers, alongside an NBomber load
+  test that drives the same demo flow at sustained throughput against a running stack.
 
 ## Running it
 
@@ -210,6 +214,23 @@ connection strings/settings in each service's `appsettings.json` (defaults assum
 matching the Postgres containers from `docker compose up` and the `.env.example` password — edit
 both `appsettings.json` and `.env` together if you change it).
 
+`dotnet test` needs Docker Desktop running even without `docker compose up` — the integration
+tests under `tests/IntegrationTests/` spin up real, disposable Postgres/RabbitMQ/Keycloak
+containers via [Testcontainers](https://testcontainers.com/), the same way the real deployment
+uses them, rather than mocking any of the three.
+
+### Load testing
+
+```bash
+docker compose -f deploy/docker-compose/docker-compose.yml up --build  # if not already running
+dotnet run --project tests/LoadTests/Payflow.LoadTests -c Release
+```
+
+Fetches a real token the same way the demo does, then drives sustained load at `POST /payments`
+against that running stack, producing an HTML+CSV report under `reports/`. Cranking
+`Chaos__CardNetworkFaultRate` first (see above) is the documented way to run it a second time
+under chaos — watch Grafana's dashboard move in real time either way.
+
 ## Roadmap
 
 Each phase after Phase 1 ships as its own working increment.
@@ -223,7 +244,7 @@ Each phase after Phase 1 ships as its own working increment.
 | 4 – done | Observability: OpenTelemetry tracing/metrics, Serilog structured logs, local Grafana/Prometheus/Tempo/Loki |
 | 5 – done | Kubernetes + Helm, deployed locally via `kind` |
 | 6 – done | Security: Keycloak OIDC, JWT auth, mock tokenization vault |
-| 7 | Testcontainers integration tests, NBomber load tests, chaos test suite |
+| 7 – done | Testcontainers integration tests, NBomber load tests, chaos test suite |
 | 8 | README/diagram polish, demo recording |
 
 See [`docs/architecture.md`](docs/architecture.md) for details and [`docs/adr/`](docs/adr/) for the

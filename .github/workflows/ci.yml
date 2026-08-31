@@ -54,6 +54,12 @@ jobs:
             dockerfile: src/Services/Authorization/Payflow.Authorization.Api/Dockerfile
           - name: ledger-api
             dockerfile: src/Services/Ledger/Payflow.Ledger.Api/Dockerfile
+          - name: fraud-api
+            dockerfile: src/Services/Fraud/Payflow.Fraud.Api/Dockerfile
+          - name: notifications-api
+            dockerfile: src/Services/Notifications/Payflow.Notifications.Api/Dockerfile
+          - name: vault-api
+            dockerfile: src/Services/Vault/Payflow.Vault.Api/Dockerfile
     steps:
       - uses: actions/checkout@v4
 

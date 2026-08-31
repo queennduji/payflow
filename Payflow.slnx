@@ -46,6 +46,12 @@
     <Project Path="src/Shared/Payflow.Shared.Kernel/Payflow.Shared.Kernel.csproj" />
   </Folder>
   <Folder Name="/tests/" />
+  <Folder Name="/tests/IntegrationTests/">
+    <Project Path="tests/IntegrationTests/Payflow.IntegrationTests/Payflow.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/LoadTests/">
+    <Project Path="tests/LoadTests/Payflow.LoadTests/Payflow.LoadTests.csproj" />
+  </Folder>
   <Folder Name="/tests/UnitTests/">
     <Project Path="tests/UnitTests/Payflow.Authorization.UnitTests/Payflow.Authorization.UnitTests.csproj" />
     <Project Path="tests/UnitTests/Payflow.Fraud.UnitTests/Payflow.Fraud.UnitTests.csproj" />

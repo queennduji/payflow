@@ -19,6 +19,9 @@
 coverage.*
 [Cc]overage[Rr]esults*/
 
+# NBomber load test run output
+tests/LoadTests/Payflow.LoadTests/reports/
+
 # Rider/VSCode
 .vscode/*
 !.vscode/extensions.json
