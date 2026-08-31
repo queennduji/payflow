@@ -19,24 +19,34 @@ public sealed class PayflowInfrastructureFixture : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
+    // A fresh, random credential per test run rather than a fixed literal: nothing here needs to
+    // be remembered or typed by a person (unlike the docker-compose/.env credentials, which do),
+    // so there's no reason for it to be a constant anyone could find by reading the source.
+    private readonly string _rabbitMqPassword = Guid.NewGuid().ToString("N");
+
     // RabbitMQ's built-in "guest" account only accepts connections that arrive over the loopback
     // interface, as RabbitMQ itself sees it — which a container-to-host port mapping never counts
     // as, even from 127.0.0.1. A non-guest account sidesteps that restriction entirely.
-    private readonly RabbitMqContainer _rabbitMq = new RabbitMqBuilder("rabbitmq:4-management-alpine")
-        .WithUsername("payflow")
-        .WithPassword("local-dev-only")
-        .Build();
+    private readonly RabbitMqContainer _rabbitMq;
 
     private readonly KeycloakContainer _keycloak = new KeycloakBuilder("quay.io/keycloak/keycloak:26.0")
         .WithRealm(FindRealmExportPath())
         .Build();
+
+    public PayflowInfrastructureFixture()
+    {
+        _rabbitMq = new RabbitMqBuilder("rabbitmq:4-management-alpine")
+            .WithUsername("payflow")
+            .WithPassword(_rabbitMqPassword)
+            .Build();
+    }
 
     public string PostgresHost => _postgres.Hostname;
     public int PostgresPort => _postgres.GetMappedPublicPort(5432);
     public string RabbitMqHost => _rabbitMq.Hostname;
     public int RabbitMqPort => _rabbitMq.GetMappedPublicPort(5672);
     public string RabbitMqUsername => "payflow";
-    public string RabbitMqPassword => "local-dev-only";
+    public string RabbitMqPassword => _rabbitMqPassword;
     // GetBaseAddress() already ends in a trailing slash — naively appending another segment here
     // produces a double slash, which makes the issuer string JwtBearer validates against not
     // match the token's actual (single-slash) `iss` claim.

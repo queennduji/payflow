@@ -3,6 +3,7 @@
 secrets:
   postgresPassword: local-dev-only
   grafanaAdminPassword: local-dev-only
+  keycloakAdminPassword: local-dev-only
 
 # Injected into every service's env alongside POSTGRES_PASSWORD (see templates/services.yaml) —
 # every service validates its own JWT against the same Keycloak realm.

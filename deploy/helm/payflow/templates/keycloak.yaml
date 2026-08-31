@@ -33,7 +33,10 @@ spec:
             - name: KEYCLOAK_ADMIN
               value: admin
             - name: KEYCLOAK_ADMIN_PASSWORD
-              value: admin
+              valueFrom:
+                secretKeyRef:
+                  name: payflow-secrets
+                  key: keycloak-admin-password
             # Same reasoning as the docker-compose service: a full URL plus hostname-strict pins
             # the issuer regardless of how Keycloak was reached (in-cluster Service vs. a
             # port-forwarded host connection) — a bare hostname isn't enough, since Keycloak still
