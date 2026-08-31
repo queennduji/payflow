@@ -1,5 +1,8 @@
 # PayFlow
 
+[![CI](https://github.com/queennduji/payflow/actions/workflows/ci.yml/badge.svg)](https://github.com/queennduji/payflow/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/queennduji/payflow)](LICENSE)
+
 A payment gateway built as a microservices platform: saga-orchestrated authorization and capture, a
 double-entry ledger, fraud review, and merchant notifications — with the failure modes that come
 with distributed systems treated as first-class design concerns rather than afterthoughts.
@@ -21,12 +24,13 @@ Where a decision matters and could plausibly have gone another way, it's written
 what fixed them later (see [ADR-0002](docs/adr/0002-synchronous-orchestration-before-saga.md) →
 [ADR-0005](docs/adr/0005-saga-orchestration-and-outbox.md)).
 
-## Architecture (Phase 2)
+## Architecture
 
 ```mermaid
 flowchart LR
-    client([Client]) -->|"POST /api/payments"| gateway[["Gateway (YARP)"]]
+    client([Client]) -->|"Authorization: Bearer JWT"| gateway[["Gateway (YARP)"]]
     gateway --> payments[["Payments.Api\n(saga orchestrator)"]]
+    gateway --> vault[["Vault.Api"]]
     payments <-->|"request/response +\ncommands/events"| mq[("RabbitMQ")]
     mq <--> fraud[["Fraud.Api"]]
     mq <--> auth[["Authorization.Api"]]
@@ -34,8 +38,11 @@ flowchart LR
     mq <--> notif[["Notifications.Api"]]
 ```
 
-Full diagrams (container view, sequence diagram, bounded contexts) are in
-[`docs/architecture.md`](docs/architecture.md).
+The gateway and every service behind it validate that JWT independently against Keycloak — see
+[ADR-0009](docs/adr/0009-tokenization-boundary-and-zero-trust-auth.md). Not pictured here to keep
+this at-a-glance: Keycloak itself and the observability stack (OTel Collector → Tempo/Loki/Prometheus,
+Grafana) sitting alongside all of the above. Full diagrams (container view including both, sequence
+diagram, bounded contexts) are in [`docs/architecture.md`](docs/architecture.md).
 
 **Stack:** .NET 10 / ASP.NET Core minimal APIs, Clean Architecture per service (Domain → Application
 → Infrastructure → Api), MediatR for CQRS, EF Core + PostgreSQL (database-per-service), MassTransit
@@ -86,8 +93,9 @@ cp deploy/docker-compose/.env.example deploy/docker-compose/.env
 docker compose -f deploy/docker-compose/docker-compose.yml up --build
 ```
 
-`.env` (gitignored) holds the local Postgres/Grafana passwords — containers on your own machine's
-Docker network, never exposed anywhere, so the placeholder value in `.env.example` is fine as-is.
+`.env` (gitignored) holds the local Postgres/Grafana/Keycloak admin passwords — containers on your
+own machine's Docker network, never exposed anywhere, so the placeholder value in `.env.example` is
+fine as-is.
 
 This brings up RabbitMQ, Keycloak (`:8081`), six Postgres instances, seven services — `gateway`
 (`:8080`), `payments-api` (`:5218`), `authorization-api` (`:5081`), `ledger-api` (`:5204`),
@@ -190,7 +198,8 @@ back to `0.0` (or just restart the container) to return to normal.
 `docker compose up` also brings up an OpenTelemetry Collector, Tempo, Loki, and Prometheus, with
 Grafana wired to all three. Run the demo `curl` sequence above, then:
 
-1. Open Grafana at `http://localhost:3000` (`admin`/`admin`) and go to **Explore**.
+1. Open Grafana at `http://localhost:3000` (`admin` / whatever `GRAFANA_ADMIN_PASSWORD` resolved to
+   in your `.env`) and go to **Explore**.
 2. Pick the **Tempo** datasource and search for a recent trace — a payment's spans show up across
    `gateway` → `payments-api` → (over the bus) `fraud-api` / `authorization-api` / `ledger-api` →
    `notifications-api`, in one place.
@@ -245,7 +254,7 @@ Each phase after Phase 1 ships as its own working increment.
 | 5 – done | Kubernetes + Helm, deployed locally via `kind` |
 | 6 – done | Security: Keycloak OIDC, JWT auth, mock tokenization vault |
 | 7 – done | Testcontainers integration tests, NBomber load tests, chaos test suite |
-| 8 | README/diagram polish, demo recording |
+| 8 – done | README/architecture-diagram polish, CI badges — demo recording dropped (no screen-capture tooling available) |
 
 See [`docs/architecture.md`](docs/architecture.md) for details and [`docs/adr/`](docs/adr/) for the
 reasoning behind what's built so far.
@@ -266,9 +275,13 @@ src/
     Payflow.Shared.Contracts/             Cross-service HTTP DTOs and bus message contracts
     Payflow.Shared.Api/                   Result-to-HTTP mapping, global exception handling,
                                            observability + JWT auth wiring
-tests/UnitTests/                          xUnit + FluentAssertions + NSubstitute + MassTransit ITestHarness
+tests/
+  UnitTests/                              xUnit + FluentAssertions + NSubstitute + MassTransit ITestHarness
+  IntegrationTests/                       Testcontainers-backed Postgres/RabbitMQ/Keycloak, real saga + auth flows
+  LoadTests/                              NBomber, run against a live docker-compose stack
 deploy/
   docker-compose/                         Local multi-service orchestration (RabbitMQ, Keycloak, 6 Postgres, 7 services)
+  keycloak/                               Realm export shared by docker-compose, Helm, and the integration tests
   helm/payflow/                           The same platform as one Helm chart (see docs/kubernetes.md)
   kind/                                   Local kind cluster config + build/load scripts
 docs/                                     Architecture notes and ADRs
