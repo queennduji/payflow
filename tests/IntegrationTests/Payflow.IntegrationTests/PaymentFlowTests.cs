@@ -5,7 +5,7 @@ using FluentAssertions;
 
 namespace Payflow.IntegrationTests;
 
-/// <summary>Boots the saga-participant services once for every test in this class — see
+/// <summary>Boots the saga-participant services once for every test in this class – see
 /// <see cref="PayflowCollection"/> for why the containers themselves are shared instead.</summary>
 public sealed class PaymentFlowClusterFixture(PayflowInfrastructureFixture infrastructure) : IAsyncLifetime
 {
@@ -19,7 +19,7 @@ public sealed class PaymentFlowClusterFixture(PayflowInfrastructureFixture infra
 /// <summary>
 /// The automated version of the demo `curl` sequence every phase since Phase 2 has re-run by hand:
 /// capture, decline, fraud reject, and idempotent replay, driven as real HTTP calls through a real
-/// Postgres-backed, RabbitMQ-orchestrated saga — not mocks, not `ITestHarness`'s in-memory bus.
+/// Postgres-backed, RabbitMQ-orchestrated saga – not mocks, not `ITestHarness`'s in-memory bus.
 /// </summary>
 [Collection(PayflowCollection.Name)]
 public sealed class PaymentFlowTests(PaymentFlowClusterFixture clusterFixture, PayflowInfrastructureFixture infrastructure)

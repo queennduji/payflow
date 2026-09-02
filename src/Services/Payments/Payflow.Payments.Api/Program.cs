@@ -27,12 +27,12 @@ builder.Services.AddMassTransit(x =>
             r.UsePostgres();
         });
 
-    // See ADR-0006: this consumer — not the saga directly — sends the response to a pending
+    // See ADR-0006: this consumer – not the saga directly – sends the response to a pending
     // IRequestClient<ProcessPayment> await, so that send only ever happens after the saga's
     // outcome has actually committed.
     x.AddConsumer<PaymentOutcomeReadyConsumer>();
 
-    // Payments.Api's own synchronous facade over the saga — see ADR-0006.
+    // Payments.Api's own synchronous facade over the saga – see ADR-0006.
     x.AddRequestClient<ProcessPayment>(TimeSpan.FromSeconds(10));
 
     x.AddEntityFrameworkOutbox<PaymentsDbContext>(o =>
@@ -50,7 +50,7 @@ builder.Services.AddMassTransit(x =>
         });
 
         // Postgres SERIALIZABLE isolation (used by the EF saga/outbox integration) can
-        // legitimately reject a transaction with a 40001 conflict under concurrent load — this
+        // legitimately reject a transaction with a 40001 conflict under concurrent load – this
         // is expected, retriable behavior, not a bug; without a retry policy those faults would
         // otherwise strand messages (and, for the saga, HTTP callers) on the first collision.
         cfg.UseMessageRetry(r => r.Intervals(50, 100, 200, 500, 1000));

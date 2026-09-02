@@ -4,7 +4,7 @@ using System.Text.Json;
 using NBomber.Contracts.Stats;
 using NBomber.CSharp;
 
-// Targets an already-running `docker compose up` stack — load testing exercises a live
+// Targets an already-running `docker compose up` stack – load testing exercises a live
 // environment on purpose, the same one the README's demo curl sequence and Grafana dashboards
 // already point at. It is not started by this tool.
 const string GatewayBaseUrl = "http://localhost:8080";
@@ -32,7 +32,7 @@ var scenario = Scenario.Create("submit_payment", async context =>
     return response.IsSuccessStatusCode ? Response.Ok(statusCode: statusCode) : Response.Fail(statusCode: statusCode);
 })
 .WithLoadSimulations(
-    // A steady climb, not an instant spike — the same shape as the README's own chaos walkthrough
+    // A steady climb, not an instant spike – the same shape as the README's own chaos walkthrough
     // (a burst of requests, not a single one), just sustained long enough to see it in Grafana.
     Simulation.RampingInject(rate: 20, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30)),
     Simulation.Inject(rate: 20, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(60))

@@ -20,8 +20,8 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set in .env, see .env.example}
       # Pins the issuer/JWKS URLs baked into every token to this exact URL regardless of whether
       # Keycloak was reached via the docker network (services, port 8080) or the published host
-      # port (the demo's own curl calls, port 8081). A bare hostname isn't enough — Keycloak still
-      # echoes back whatever port the request arrived on — a full URL plus hostname-strict is what
+      # port (the demo's own curl calls, port 8081). A bare hostname isn't enough – Keycloak still
+      # echoes back whatever port the request arrived on – a full URL plus hostname-strict is what
       # actually fixes it.
       KC_HOSTNAME: http://keycloak:8080
       KC_HOSTNAME_STRICT: "true"

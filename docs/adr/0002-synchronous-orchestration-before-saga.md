@@ -11,20 +11,20 @@ Superseded by [ADR-0005](0005-saga-orchestration-and-outbox.md), which implement
 The core payment flow (authorize → capture → post to ledger) touches three services. There are two
 ways to build this from the start: a message-broker-backed saga with a transactional outbox, or a
 synchronous call chain from Payments to Authorization and Ledger. The saga is the architecturally
-correct answer for production — it's also the flagship pattern this project exists to demonstrate.
+correct answer for production – it's also the flagship pattern this project exists to demonstrate.
 
 ## Decision
 
 Phase 1 deliberately ships the naive synchronous version first: `Payments.Api` calls Authorization,
 then Ledger, over plain HTTP, inside one MediatR command handler
-(`SubmitPaymentCommandHandler`). This is not a placeholder we forgot to fix — it is the concrete,
+(`SubmitPaymentCommandHandler`). This is not a placeholder we forgot to fix – it is the concrete,
 runnable illustration of the problem sagas exist to solve.
 
 ## Consequences
 
 **Known gap, left in on purpose:** if the process crashes or the Ledger call fails *after*
 Authorization has already approved the charge, Phase 1 marks the payment `Failed` and does not
-retry — an operator would need to manually reconcile that authorization (see
+retry – an operator would need to manually reconcile that authorization (see
 `SubmitPaymentCommandHandler.Handle`, the `ledgerResponse.Posted` branch). A client retrying with
 the same Idempotency-Key on a fresh `Failed` payment causes a *second* authorization request rather
 than resuming the first attempt, because Phase 1 has no durable record of "where" a payment got to

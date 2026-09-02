@@ -15,7 +15,7 @@ public sealed class PostLedgerEntryConsumer(ISender sender) : IConsumer<PostLedg
 
         if (result.IsFailure)
         {
-            // A validation failure (e.g. an unbalanced posting) is not transient — retrying it would
+            // A validation failure (e.g. an unbalanced posting) is not transient – retrying it would
             // fail identically, so report it to the saga as a definitive LedgerPostFailed rather than
             // letting MassTransit's consumer retry/redelivery keep hammering it.
             await context.Publish(new LedgerPostFailed(message.PaymentId, result.Error.Message));

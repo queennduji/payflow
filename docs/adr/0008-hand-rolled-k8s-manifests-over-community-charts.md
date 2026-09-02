@@ -23,6 +23,6 @@ no persistent volume, matching the same ephemeral choice `docker-compose.yml` al
 
 No external chart repository to add, pin, or have break under us, and no values surface bigger than
 what a single-instance, non-HA local deployment actually needs. The cost is real: replication,
-backup, and failover that a community chart would provide for free are simply absent here — an
+backup, and failover that a community chart would provide for free are simply absent here – an
 explicit non-goal for a local `kind` demo (see the Phase 5 plan's out-of-scope list), not an
 oversight, but a real gap if this chart were ever pointed at a use case that needed them.

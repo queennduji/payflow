@@ -5,7 +5,7 @@ using FluentAssertions;
 
 namespace Payflow.IntegrationTests;
 
-/// <summary>Its own cluster, not <see cref="PaymentFlowClusterFixture"/>'s — Authorization needs a
+/// <summary>Its own cluster, not <see cref="PaymentFlowClusterFixture"/>'s – Authorization needs a
 /// cranked-up fault rate here, which the happy-path cluster deliberately keeps at zero.</summary>
 public sealed class ChaosClusterFixture(PayflowInfrastructureFixture infrastructure) : IAsyncLifetime
 {
@@ -19,19 +19,19 @@ public sealed class ChaosClusterFixture(PayflowInfrastructureFixture infrastruct
 /// <summary>
 /// Turns Phase 3's fault-injection knob (<c>Chaos:CardNetworkFaultRate</c>) into an assertion
 /// instead of something only ever watched by eye in Grafana. With the mock card network failing
-/// outright on every call, every one of several sequential payments should still resolve — as a
-/// graceful decline, never a fault — because Authorization's resilience pipeline (retry, then
+/// outright on every call, every one of several sequential payments should still resolve – as a
+/// graceful decline, never a fault – because Authorization's resilience pipeline (retry, then
 /// circuit breaker) degrades to `processor_unavailable` rather than letting the fault escape.
 /// </summary>
 /// <remarks>
 /// Sequential on purpose, not concurrent: firing this same burst as truly-simultaneous requests
-/// (<c>Task.WhenAll</c>, no stagger) reproducibly surfaces a separate, real bug — MassTransit's EF
+/// (<c>Task.WhenAll</c>, no stagger) reproducibly surfaces a separate, real bug – MassTransit's EF
 /// saga repository can fault a brand-new saga's own <c>Initially()</c> transition with "entity ...
 /// already being tracked" when enough *different* payments' saga rows get created on Postgres in
 /// the same instant, under EF Core's <c>EnableRetryOnFailure</c> retrying an attempt whose change
 /// tracker still holds state from the try that lost the SERIALIZABLE conflict. That's a genuine
 /// saga/EF-retry concurrency issue worth its own fix, not something this class should paper over
-/// by weakening what it actually asserts — tracked as follow-up work.
+/// by weakening what it actually asserts – tracked as follow-up work.
 /// </remarks>
 [Collection(PayflowCollection.Name)]
 public sealed class ResilienceChaosTests(ChaosClusterFixture clusterFixture, PayflowInfrastructureFixture infrastructure)

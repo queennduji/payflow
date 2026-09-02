@@ -39,7 +39,7 @@ spec:
                   key: keycloak-admin-password
             # Same reasoning as the docker-compose service: a full URL plus hostname-strict pins
             # the issuer regardless of how Keycloak was reached (in-cluster Service vs. a
-            # port-forwarded host connection) — a bare hostname isn't enough, since Keycloak still
+            # port-forwarded host connection) – a bare hostname isn't enough, since Keycloak still
             # echoes back whatever port the request arrived on.
             - name: KC_HOSTNAME
               value: http://keycloak:8080

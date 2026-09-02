@@ -23,7 +23,7 @@ public sealed class PostLedgerEntryCommandHandler(
             return Result.Success(new LedgerEntryGroupResponse(existing.Id, Posted: true));
 
         // EF Core tracks owned types (Money, owned by each LedgerLine) by reference identity, so
-        // the debit and credit lines each need their own Money instance — sharing one object
+        // the debit and credit lines each need their own Money instance – sharing one object
         // across two sibling owned entities silently corrupts change tracking (one line's amount
         // ends up NULL in the database instead of raising an error).
         var debitAmountResult = Money.Create(request.Amount, request.Currency);

@@ -9,18 +9,18 @@ namespace Payflow.Payments.Application.Saga;
 /// <summary>
 /// Orchestrates a payment through Fraud → Authorization → Ledger, with a compensating
 /// <see cref="VoidAuthorization"/> when Ledger posting fails after authorization already
-/// succeeded. This is the Phase 2 replacement for the Phase 1 in-handler HTTP call chain — see
+/// succeeded. This is the Phase 2 replacement for the Phase 1 in-handler HTTP call chain – see
 /// ADR-0002 (the gap this closes) and ADR-0005 (this design).
 ///
 /// The saga also plays a role in Payments.Api's synchronous facade: <see cref="ProcessPayment"/>
 /// arrives via <c>IRequestClient</c>, so <c>Initially()</c> stashes the caller's
 /// <see cref="ConsumeContext.ResponseAddress"/>/<see cref="ConsumeContext.RequestId"/> in saga
 /// state. Each terminal branch publishes <see cref="PaymentOutcomeReady"/> rather than sending the
-/// actual response itself — see ADR-0006 for why: a direct send here would leave via the transport
+/// actual response itself – see ADR-0006 for why: a direct send here would leave via the transport
 /// before this activity chain's own database writes (which run inside the saga repository's ambient
 /// transaction) are guaranteed to have committed. Publishing goes through the same transactional
 /// outbox as every other message this saga sends, so PaymentOutcomeReady is only ever observed
-/// after the write that produced it is durable — the dedicated consumer of that message (see
+/// after the write that produced it is durable – the dedicated consumer of that message (see
 /// Payflow.Payments.Api.Consumers.PaymentOutcomeReadyConsumer) is what actually responds.
 /// </summary>
 public sealed class PaymentSagaStateMachine : MassTransitStateMachine<PaymentSagaState>
@@ -109,7 +109,7 @@ public sealed class PaymentSagaStateMachine : MassTransitStateMachine<PaymentSag
                 .Finalize(),
 
             // Compensating transaction: authorization already succeeded, so it must be voided
-            // before this payment can be reported as failed — see ADR-0005.
+            // before this payment can be reported as failed – see ADR-0005.
             When(LedgerPostFailed)
                 .Then(context => context.Saga.PendingFailureReason = context.Message.Reason)
                 .Publish(context => new VoidAuthorization(context.Saga.CorrelationId, context.Saga.AuthorizationId!.Value))

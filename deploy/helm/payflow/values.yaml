@@ -1,18 +1,18 @@
-# Local-only defaults. Override with --set or a gitignored values.local.yaml at install time —
+# Local-only defaults. Override with --set or a gitignored values.local.yaml at install time –
 # same pattern as deploy/docker-compose/.env vs .env.example.
 secrets:
   postgresPassword: local-dev-only
   grafanaAdminPassword: local-dev-only
   keycloakAdminPassword: local-dev-only
 
-# Injected into every service's env alongside POSTGRES_PASSWORD (see templates/services.yaml) —
+# Injected into every service's env alongside POSTGRES_PASSWORD (see templates/services.yaml) –
 # every service validates its own JWT against the same Keycloak realm.
 authentication:
   authority: http://keycloak:8080/realms/payflow
   audience: payflow-api
 
 image:
-  # Images are built locally and `kind load docker-image`d — see deploy/kind/build-and-load.sh.
+  # Images are built locally and `kind load docker-image`d – see deploy/kind/build-and-load.sh.
   # Repository names below must match what that script tags them as.
   tag: local
   pullPolicy: IfNotPresent
@@ -26,7 +26,7 @@ resources:
     memory: 256Mi
 
 # One entry per .NET service. Port and health path are uniform (every service exposes the same
-# ASP.NET Core shape), so only what actually differs per service — image, env — is listed here;
+# ASP.NET Core shape), so only what actually differs per service – image, env – is listed here;
 # templates/services.yaml ranges over this once instead of six near-identical Deployments.
 services:
   - name: gateway
@@ -100,7 +100,7 @@ services:
       Otel__CollectorUrl: "http://otel-collector:4317"
 
 # One entry per database. templates/postgres.yaml ranges over this to emit one StatefulSet + PVC +
-# Service per instance — same reasoning as services.yaml above.
+# Service per instance – same reasoning as services.yaml above.
 postgres:
   - name: payments
     database: payments_db

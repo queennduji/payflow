@@ -3,7 +3,7 @@ using Payflow.Shared.Kernel;
 namespace Payflow.Ledger.Domain;
 
 /// <summary>
-/// A named position in the ledger. Deliberately holds no balance field — balance is always derived
+/// A named position in the ledger. Deliberately holds no balance field – balance is always derived
 /// by summing posted <see cref="LedgerLine"/>s (see <see cref="AccountBalanceCalculator"/>), so it
 /// can never drift out of sync with the entries that are supposed to explain it.
 /// </summary>

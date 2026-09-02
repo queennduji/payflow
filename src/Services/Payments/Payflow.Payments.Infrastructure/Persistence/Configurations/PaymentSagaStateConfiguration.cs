@@ -5,7 +5,7 @@ using Payflow.Payments.Application.Saga;
 namespace Payflow.Payments.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// Maps the saga instance like any other entity — MassTransit's EF Core saga repository works
+/// Maps the saga instance like any other entity – MassTransit's EF Core saga repository works
 /// against a plain <c>DbSet&lt;TSaga&gt;</c> on an existing <see cref="PaymentsDbContext"/>, no
 /// special base class required.
 /// </summary>

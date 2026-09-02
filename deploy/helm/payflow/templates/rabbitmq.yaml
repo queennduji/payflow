@@ -6,7 +6,7 @@ metadata:
     {{- include "payflow.labels" . | nindent 4 }}
     app.kubernetes.io/name: rabbitmq
 spec:
-  # No PVC: docker-compose runs RabbitMQ ephemeral too (no volume declared there either) — this
+  # No PVC: docker-compose runs RabbitMQ ephemeral too (no volume declared there either) – this
   # chart doesn't add durability the reference deployment target doesn't have.
   replicas: 1
   selector:

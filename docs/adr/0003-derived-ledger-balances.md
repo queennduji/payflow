@@ -20,12 +20,12 @@ sign (`AccountBalanceCalculator`: Asset/Expense are debit-normal, Liability/Equi
 credit-normal).
 
 Account provisioning is likewise simplified: accounts are auto-opened on first reference with a
-type inferred from an id prefix (`merchant:` → Liability, `customer:` → Asset — see
+type inferred from an id prefix (`merchant:` → Liability, `customer:` → Asset – see
 `EfAccountRepository.InferType`) rather than requiring an explicit chart-of-accounts step.
 
 ## Consequences
 
-A derived balance can never drift from the entries that are supposed to explain it — there is no
+A derived balance can never drift from the entries that are supposed to explain it – there is no
 "balance says X but the entries sum to Y" class of bug to debug, at the cost of an aggregation
 query instead of an indexed column read. At this project's scale that trade is easy; a
 high-throughput ledger would typically add a periodically-reconciled balance snapshot on top of

@@ -33,7 +33,7 @@ public class TokenizeCardCommandHandlerTests
         await CreateHandler().Handle(new TokenizeCardCommand("4242424242424242", 12, 2030), CancellationToken.None);
 
         persisted.Should().NotBeNull();
-        // Reflect over every string field the entity actually has — none of them may equal, or
+        // Reflect over every string field the entity actually has – none of them may equal, or
         // even contain, the raw card number handed in.
         var fields = typeof(VaultToken).GetProperties().Where(p => p.PropertyType == typeof(string));
         foreach (var field in fields)

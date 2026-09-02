@@ -7,7 +7,7 @@ namespace Payflow.Shared.Api;
 /// <summary>
 /// Last-resort handler for exceptions that escape an endpoint unconverted (a downstream service
 /// being unreachable, an unmapped bug). Business failures should already have been turned into a
-/// <c>Result</c> and never reach here — see <see cref="ResultExtensions"/>. Registered per service
+/// <c>Result</c> and never reach here – see <see cref="ResultExtensions"/>. Registered per service
 /// via <c>app.UseExceptionHandler()</c> alongside <c>services.AddExceptionHandler&lt;GlobalExceptionHandler&gt;()</c>.
 /// </summary>
 public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler

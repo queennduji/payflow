@@ -101,7 +101,7 @@ public class SubmitPaymentCommandHandlerTests
     [Fact]
     public async Task A_completed_saga_result_is_cached_when_the_outcome_is_captured()
     {
-        // ReloadAsync mutates the same tracked instance in place — that's what EF Core's reload
+        // ReloadAsync mutates the same tracked instance in place – that's what EF Core's reload
         // does, and what SubmitPaymentCommandHandler relies on instead of a stale re-query.
         _payments.ReloadAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>

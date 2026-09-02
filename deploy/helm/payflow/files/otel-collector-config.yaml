@@ -14,7 +14,7 @@ exporters:
     endpoint: tempo:4317
     tls:
       insecure: true
-  # Loki's own OTLP endpoint (native since Loki 3.x) — no dedicated Loki exporter plugin needed.
+  # Loki's own OTLP endpoint (native since Loki 3.x) – no dedicated Loki exporter plugin needed.
   otlphttp/loki:
     endpoint: http://loki:3100/otlp
     tls:

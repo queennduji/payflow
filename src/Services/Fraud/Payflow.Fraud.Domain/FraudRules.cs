@@ -2,7 +2,7 @@ namespace Payflow.Fraud.Domain;
 
 /// <summary>
 /// Pure decision rules, split into the part that needs no history (blocklist, amount threshold)
-/// and the part that does (velocity — how many attempts a merchant has made recently). Application
+/// and the part that does (velocity – how many attempts a merchant has made recently). Application
 /// owns fetching the recent-attempt count; this class stays a plain function of its inputs so both
 /// halves are trivially unit-testable.
 /// </summary>

@@ -9,8 +9,8 @@ namespace Payflow.Payments.Api.Consumers;
 /// <summary>
 /// Bridges the saga's terminal outcome back to whoever is holding a pending
 /// <c>IRequestClient&lt;ProcessPayment&gt;</c> await. Sending the reply is a no-op if the original
-/// caller already gave up and got a 202 instead — there's nothing stored to respond to in that
-/// case — but this message still fires exactly once per terminal outcome, which makes it the right
+/// caller already gave up and got a 202 instead – there's nothing stored to respond to in that
+/// case – but this message still fires exactly once per terminal outcome, which makes it the right
 /// place to record <see cref="PaymentMetrics"/>.
 /// </summary>
 /// <remarks>
@@ -18,7 +18,7 @@ namespace Payflow.Payments.Api.Consumers;
 /// transaction that <c>EntityFrameworkSagaRepositoryContextFactory</c> wraps saga processing in, so
 /// this message can arrive slightly ahead of its own status change being visible to a fresh read.
 /// Rather than rely on exact ordering between two frameworks' commit/dispatch internals, this
-/// consumer polls (briefly — milliseconds in practice) until the write is visible before replying.
+/// consumer polls (briefly – milliseconds in practice) until the write is visible before replying.
 /// </remarks>
 public sealed class PaymentOutcomeReadyConsumer(IDbContextFactory<PaymentsDbContext> contextFactory, PaymentMetrics metrics) : IConsumer<PaymentOutcomeReady>
 {

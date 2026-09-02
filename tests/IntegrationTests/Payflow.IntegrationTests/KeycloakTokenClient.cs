@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Payflow.IntegrationTests;
 
-/// <summary>Fetches a real access token the same way the README's demo does — Resource Owner
+/// <summary>Fetches a real access token the same way the README's demo does – Resource Owner
 /// Password Credentials against the realm every service in the cluster validates against.</summary>
 public static class KeycloakTokenClient
 {

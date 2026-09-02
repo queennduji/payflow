@@ -15,7 +15,7 @@ namespace Payflow.Payments.Application.Payments;
 // saga's own activity chain, sharing the same DbContext instance MassTransit's EF saga repository
 // is already going to save and commit once the whole consumer pipeline finishes. Calling
 // SaveChangesAsync ourselves mid-pipeline nests a commit inside that still-open ambient
-// transaction — which doesn't actually commit anything early, but does trip the transactional
+// transaction – which doesn't actually commit anything early, but does trip the transactional
 // outbox's immediate-dispatch optimization into delivering messages before the real outer commit
 // happens, defeating the very atomicity the outbox exists to provide. Leaving the mutation tracked
 // and letting the saga repository's own SaveChanges pick it up keeps everything in the one true

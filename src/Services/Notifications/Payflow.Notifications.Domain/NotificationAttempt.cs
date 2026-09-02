@@ -3,7 +3,7 @@ using Payflow.Shared.Kernel;
 namespace Payflow.Notifications.Domain;
 
 /// <summary>
-/// A simulated merchant webhook dispatch — there's no real external endpoint to call in this demo,
+/// A simulated merchant webhook dispatch – there's no real external endpoint to call in this demo,
 /// so "sending" means durably recording that the notification would have gone out. Phase 3 adds
 /// Polly retry semantics on top of this for the (still simulated) delivery step.
 /// </summary>

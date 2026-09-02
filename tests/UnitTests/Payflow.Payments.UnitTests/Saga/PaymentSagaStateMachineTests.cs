@@ -13,7 +13,7 @@ using PaymentAuthorizedMessage = Payflow.Shared.Contracts.Messages.PaymentAuthor
 namespace Payflow.Payments.UnitTests.Saga;
 
 /// <summary>
-/// Exercises the saga state machine directly against MassTransit's in-memory test harness — no
+/// Exercises the saga state machine directly against MassTransit's in-memory test harness – no
 /// broker, no database. <see cref="IPaymentRepository"/>/<see cref="IUnitOfWork"/> are substituted
 /// so these tests verify both the saga's transitions *and* that it drives the Payment aggregate's
 /// own status correctly (via the real MarkPayment*Command handlers), without needing Postgres.
@@ -77,7 +77,7 @@ public sealed class PaymentSagaStateMachineTests : IAsyncLifetime
         payment.Status.Should().Be(PaymentStatus.Authorized);
 
         await _harness.Bus.Publish(new LedgerEntryPosted(payment.Id, Guid.NewGuid()));
-        // Waiting on the terminal publish is the reliable sync point — it's the last thing the
+        // Waiting on the terminal publish is the reliable sync point – it's the last thing the
         // saga's activity chain does, so by the time it's observed, MarkPaymentCapturedCommand has
         // already run.
         (await _harness.Published.Any<SendPaymentNotification>(m => m!.Message!.Status == "Captured")).Should().BeTrue();
@@ -117,7 +117,7 @@ public sealed class PaymentSagaStateMachineTests : IAsyncLifetime
         // The compensating transaction: authorization must be voided before the payment can fail.
         (await sagaHarness.Exists(payment.Id, x => x.VoidingAuthorization)).Should().NotBeNull();
         (await _harness.Published.Any<VoidAuthorization>(m => m!.Message!.AuthorizationId == authorizationId)).Should().BeTrue();
-        payment.Status.Should().Be(PaymentStatus.Authorized); // not yet failed — still waiting on the void to confirm
+        payment.Status.Should().Be(PaymentStatus.Authorized); // not yet failed – still waiting on the void to confirm
 
         await _harness.Bus.Publish(new AuthorizationVoided(payment.Id, authorizationId));
 

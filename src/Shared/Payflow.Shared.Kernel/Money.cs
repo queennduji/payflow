@@ -2,7 +2,7 @@ namespace Payflow.Shared.Kernel;
 
 /// <summary>
 /// An amount in a specific ISO-4217 currency. Arithmetic across mismatched currencies throws
-/// rather than silently producing a nonsensical amount — money bugs are the ones that get noticed.
+/// rather than silently producing a nonsensical amount – money bugs are the ones that get noticed.
 /// </summary>
 public sealed class Money : ValueObject
 {

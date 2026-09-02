@@ -8,7 +8,7 @@ namespace Payflow.IntegrationTests;
 /// <summary>
 /// Closes the gap Phase 6 explicitly deferred: real JWT validation needs an actual token from a
 /// running Keycloak, which a unit test can't produce. Reuses <see cref="PaymentFlowClusterFixture"/>
-/// — this is the exact same cluster, just called with and without a real bearer token.
+/// – this is the exact same cluster, just called with and without a real bearer token.
 /// </summary>
 [Collection(PayflowCollection.Name)]
 public sealed class AuthenticationTests(PaymentFlowClusterFixture clusterFixture, PayflowInfrastructureFixture infrastructure)
@@ -43,7 +43,7 @@ public sealed class AuthenticationTests(PaymentFlowClusterFixture clusterFixture
     [Fact]
     public async Task A_token_with_a_tampered_signature_is_rejected()
     {
-        // A genuine token, with its signature corrupted after the fact — proves validation
+        // A genuine token, with its signature corrupted after the fact – proves validation
         // actually verifies against Keycloak's JWKS rather than trusting the token's own claims.
         var token = await KeycloakTokenClient.GetDemoMerchantTokenAsync(infrastructure);
         var tamperedToken = token[..^4] + (token[^4..] == "abcd" ? "efgh" : "abcd");

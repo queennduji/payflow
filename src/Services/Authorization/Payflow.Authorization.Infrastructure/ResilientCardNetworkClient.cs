@@ -14,7 +14,7 @@ namespace Payflow.Authorization.Infrastructure;
 /// full retry+timeout cost while hammering a network that's already down.
 /// </summary>
 /// <remarks>
-/// The handler that calls this only sees <see cref="ICardNetworkClient"/> — it has no idea whether
+/// The handler that calls this only sees <see cref="ICardNetworkClient"/> – it has no idea whether
 /// the network is healthy, retrying, or tripped. Exhausting retries or finding the circuit open is
 /// reported as an ordinary decline (<c>processor_unavailable</c>), not an exception: from the
 /// saga's perspective this is a normal business outcome, not a fault to compensate around.

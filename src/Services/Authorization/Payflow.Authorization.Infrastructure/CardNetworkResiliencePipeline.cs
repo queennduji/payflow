@@ -10,7 +10,7 @@ namespace Payflow.Authorization.Infrastructure;
 /// call can't hang the saga, a few quick exponential-backoff retries for a single blip, then a
 /// circuit breaker so a sustained outage fails fast instead of every payment paying the full
 /// retry+timeout cost. Factored out of DI registration so the policy shape itself is unit-testable
-/// without executing it (see <c>CardNetworkResiliencePipelineTests</c>) — asserting "3 retries,
+/// without executing it (see <c>CardNetworkResiliencePipelineTests</c>) – asserting "3 retries,
 /// exponential backoff, breaks at a 50% failure ratio" shouldn't require real delays.
 /// </summary>
 public static class CardNetworkResiliencePipeline

@@ -4,9 +4,9 @@ namespace Payflow.Ledger.Domain;
 
 /// <summary>
 /// An immutable, balanced posting: one atomic unit of the ledger. Once <see cref="Post"/> succeeds
-/// there is no way to edit or remove a line — correcting a mistake means posting a new, opposite
+/// there is no way to edit or remove a line – correcting a mistake means posting a new, opposite
 /// group, exactly as a real accounting ledger requires. Never posted twice for the same
-/// <see cref="PaymentId"/> — enforced by a unique index in Infrastructure, making this the
+/// <see cref="PaymentId"/> – enforced by a unique index in Infrastructure, making this the
 /// idempotent receiver for Payments' (at-least-once) capture-and-post call.
 /// </summary>
 public sealed class LedgerEntryGroup : AggregateRoot<Guid>

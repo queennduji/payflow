@@ -5,7 +5,7 @@ namespace Payflow.Payments.Domain;
 /// <summary>
 /// The Payment aggregate. Owns the lifecycle of a single payment attempt from submission through
 /// authorization, capture, or failure. It does not know how authorization or ledger posting are
-/// actually performed — those are separate bounded contexts invoked by the Application layer; this
+/// actually performed – those are separate bounded contexts invoked by the Application layer; this
 /// aggregate only enforces which state transitions are legal.
 /// </summary>
 public sealed class Payment : AggregateRoot<Guid>

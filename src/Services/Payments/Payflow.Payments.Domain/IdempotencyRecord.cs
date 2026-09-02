@@ -6,7 +6,7 @@ namespace Payflow.Payments.Domain;
 /// Records that a given (merchant, Idempotency-Key) pair has already produced a result, and what
 /// that result was, so a retried request (client timeout, network blip, at-least-once redelivery)
 /// replays the original response instead of double-charging. Enforced at the storage layer with a
-/// unique constraint on (MerchantId, Key) — see Payflow.Payments.Infrastructure.
+/// unique constraint on (MerchantId, Key) – see Payflow.Payments.Infrastructure.
 /// </summary>
 public sealed class IdempotencyRecord : Entity<Guid>
 {

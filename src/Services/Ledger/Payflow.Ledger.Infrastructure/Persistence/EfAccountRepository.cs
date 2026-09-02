@@ -31,7 +31,7 @@ public sealed class EfAccountRepository(LedgerDbContext db) : IAccountRepository
         return rows.Select(r => (r.Direction, r.Amount)).ToList();
     }
 
-    // Simplified provisioning convention for the demo — see the remarks on Payflow.Ledger.Domain.Account.
+    // Simplified provisioning convention for the demo – see the remarks on Payflow.Ledger.Domain.Account.
     private static AccountType InferType(string accountId) => accountId switch
     {
         _ when accountId.StartsWith("merchant:", StringComparison.OrdinalIgnoreCase) => AccountType.Liability,

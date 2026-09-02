@@ -3,7 +3,7 @@ namespace Payflow.Authorization.Application.Abstractions;
 /// <summary>
 /// The (mocked) external dependency: a real card network call, with the latency and occasional
 /// unavailability a real one would have. <see cref="AuthorizePaymentCommandHandler"/> depends only
-/// on this interface — it has no idea whether the implementation behind it is resilient, flaky, or
+/// on this interface – it has no idea whether the implementation behind it is resilient, flaky, or
 /// both at once.
 /// </summary>
 public interface ICardNetworkClient

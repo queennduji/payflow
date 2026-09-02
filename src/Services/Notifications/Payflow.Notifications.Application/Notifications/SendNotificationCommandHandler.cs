@@ -5,7 +5,7 @@ using Payflow.Shared.Kernel;
 
 namespace Payflow.Notifications.Application.Notifications;
 
-/// <summary>Idempotent per PaymentId — the saga's fire-and-forget publish could still be redelivered at least once.</summary>
+/// <summary>Idempotent per PaymentId – the saga's fire-and-forget publish could still be redelivered at least once.</summary>
 public sealed class SendNotificationCommandHandler(INotificationRepository repository, IUnitOfWork unitOfWork)
     : IRequestHandler<SendNotificationCommand, Result<NotificationResult>>
 {

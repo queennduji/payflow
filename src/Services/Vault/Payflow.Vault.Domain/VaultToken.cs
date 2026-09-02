@@ -5,7 +5,7 @@ namespace Payflow.Vault.Domain;
 /// <summary>
 /// A tokenized card reference. This is the entire cardholder-data footprint the platform is
 /// willing to carry: the full card number handed to <see cref="Issue"/> is used only to compute
-/// <see cref="Last4"/> and is never assigned to a field, logged, or returned — there is no field
+/// <see cref="Last4"/> and is never assigned to a field, logged, or returned – there is no field
 /// on this type it could even be stored in by accident.
 /// </summary>
 public sealed class VaultToken : Entity<Guid>

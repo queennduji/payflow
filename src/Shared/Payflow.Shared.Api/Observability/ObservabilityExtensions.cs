@@ -46,7 +46,7 @@ public static class ObservabilityExtensions
             .WithTracing(tracing => tracing
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
-                // MassTransit and Npgsql both emit ActivitySource spans natively — registering the
+                // MassTransit and Npgsql both emit ActivitySource spans natively – registering the
                 // source name is the entire integration, no extra instrumentation package needed.
                 .AddSource("MassTransit")
                 .AddSource("Npgsql")

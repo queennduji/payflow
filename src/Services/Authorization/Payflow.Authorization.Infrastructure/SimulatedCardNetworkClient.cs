@@ -12,7 +12,7 @@ public sealed class ChaosOptions
 
 /// <summary>
 /// Stands in for the actual network call to a card processor: adds realistic latency and,
-/// deliberately, a configurable chance of failing outright — the thing a real network call can do
+/// deliberately, a configurable chance of failing outright – the thing a real network call can do
 /// that a pure business-rule function never would. The decision itself is untouched, unmocked
 /// business logic (<see cref="AuthorizationDecisionEngine"/>); only the "is the call itself healthy
 /// right now" question is simulated here. Fault injection is hand-rolled rather than via Simmy,

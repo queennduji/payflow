@@ -14,7 +14,7 @@ public sealed class AuthorizationAttemptConfiguration : IEntityTypeConfiguration
         builder.Property(a => a.DeclineReason).HasMaxLength(200);
         builder.Property(a => a.ProcessorReference).HasMaxLength(50).IsRequired();
 
-        // Idempotent-consumer guarantee: one authorization decision per payment, ever — this is
+        // Idempotent-consumer guarantee: one authorization decision per payment, ever – this is
         // what closes the Phase-1 gap ADR-0002 flagged about Authorization's in-memory store.
         builder.HasIndex(a => a.PaymentId).IsUnique();
     }

@@ -11,13 +11,13 @@ Accepted
 PayFlow is built in phases, several of which replace an earlier phase's approach (synchronous
 orchestration → saga, in-process idempotency → persisted saga state, etc.). Without a written
 record, it's easy for a reader (or a future contributor) to mistake an intentional, superseded
-simplification for an oversight — or to re-litigate a decision that was already made deliberately.
+simplification for an oversight – or to re-litigate a decision that was already made deliberately.
 
 ## Decision
 
 We will use Architecture Decision Records (ADRs), one Markdown file per decision, numbered
 sequentially in `docs/adr/`, following the lightweight format Michael Nygard proposed. Each
-non-trivial architectural choice — and, importantly, each deliberately deferred one — gets a
+non-trivial architectural choice – and, importantly, each deliberately deferred one – gets a
 record: what we decided, why, and what we didn't choose.
 
 ## Consequences

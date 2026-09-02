@@ -15,7 +15,7 @@ every service could send OTLP to one collector that fans out to them.
 ## Decision
 
 Every service exports OTLP (traces, metrics, logs) to a single `otel-collector` container. The
-collector's pipeline config is the only place that knows Tempo, Prometheus, and Loki exist —
+collector's pipeline config is the only place that knows Tempo, Prometheus, and Loki exist –
 application code and `docker-compose.yml`'s service environment variables reference only
 `otel-collector`.
 

@@ -16,7 +16,7 @@ public sealed class EfUnitOfWork(PaymentsDbContext db) : IUnitOfWork
         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
             // Translate the storage-level race into the Application-layer vocabulary before it
-            // escapes this layer — callers should never need to know we're on Postgres. Each call
+            // escapes this layer – callers should never need to know we're on Postgres. Each call
             // site only ever adds one of these in a given SaveChangesAsync, so checking both is
             // unambiguous.
             var conflictingIdempotency = db.ChangeTracker.Entries<IdempotencyRecord>()

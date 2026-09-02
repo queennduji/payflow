@@ -1,7 +1,7 @@
 # Architecture
 
 This document reflects the system's current shape (through Phase 7). The phase-by-phase history of
-*how* it got here — what each increment added and why — lives in git history and
+*how* it got here – what each increment added and why – lives in git history and
 [`docs/adr/`](adr/), not here; this doc only tracks where things stand today.
 
 ## Container view
@@ -62,16 +62,16 @@ flowchart LR
     grafana --> prometheus
 ```
 
-Every service that publishes a message does so through MassTransit's transactional outbox — the
+Every service that publishes a message does so through MassTransit's transactional outbox – the
 message and the database write it depends on commit atomically ([ADR-0005](adr/0005-saga-orchestration-and-outbox.md)).
-Every service — not just the gateway — validates its own Keycloak-issued JWT independently; the bus
+Every service – not just the gateway – validates its own Keycloak-issued JWT independently; the bus
 is the internal trust boundary, HTTP is the perimeter ([ADR-0009](adr/0009-tokenization-boundary-and-zero-trust-auth.md)).
 Every service also ships OTLP to one collector, which fans traces/metrics/logs out to Tempo,
 Prometheus, and Loki respectively ([ADR-0007](adr/0007-otel-collector-as-telemetry-fan-out.md)).
 
 ## Request flow: `POST /payments`
 
-The JWT check above happens at the perimeter, before any of this — by the time
+The JWT check above happens at the perimeter, before any of this – by the time
 `SubmitPaymentCommandHandler` runs, the caller is already authenticated, so it isn't part of the
 saga's own sequence below.
 
@@ -119,7 +119,7 @@ sequenceDiagram
         end
         Saga->>N: SendPaymentNotification (fire-and-forget)
     end
-    P-->>C: 201 Created (final status) — or 202 Accepted + Location if the 10s bound elapses first
+    P-->>C: 201 Created (final status) – or 202 Accepted + Location if the 10s bound elapses first
 ```
 
 ## Bounded contexts
@@ -129,19 +129,19 @@ sequenceDiagram
 | Payments | `Payment` aggregate, idempotency records, the saga's own state | Entry point; hosts `PaymentSagaStateMachine` |
 | Fraud | Fraud check audit log, velocity counts | Rule-based: blocklist, amount threshold, rolling-window velocity |
 | Authorization | Mock authorization decisions | EF-backed, idempotent per `PaymentId`; the mock card network is where Phase 3's timeout/retry/circuit-breaker pipeline sits |
-| Ledger | `Account`, `LedgerEntryGroup` (double-entry) | Balances are always derived, never stored — [ADR-0003](adr/0003-derived-ledger-balances.md) |
-| Notifications | Simulated webhook delivery log | Fire-and-forget from the saga's perspective — a slow/failed notification never rolls back money |
-| Vault | `VaultToken` (token, last-4, expiry) — deliberately nothing else | The only place a full card number is ever accepted; not a saga participant — [ADR-0009](adr/0009-tokenization-boundary-and-zero-trust-auth.md) |
+| Ledger | `Account`, `LedgerEntryGroup` (double-entry) | Balances are always derived, never stored – [ADR-0003](adr/0003-derived-ledger-balances.md) |
+| Notifications | Simulated webhook delivery log | Fire-and-forget from the saga's perspective – a slow/failed notification never rolls back money |
+| Vault | `VaultToken` (token, last-4, expiry) – deliberately nothing else | The only place a full card number is ever accepted; not a saga participant – [ADR-0009](adr/0009-tokenization-boundary-and-zero-trust-auth.md) |
 
 Each service still follows Clean Architecture layering (`Domain` → `Application` → `Infrastructure`
 → `Api`) with MediatR for CQRS inside `Application`. Services talk to *each other* over RabbitMQ
-(via MassTransit) — point-to-point commands and published events, never direct HTTP — but every
+(via MassTransit) – point-to-point commands and published events, never direct HTTP – but every
 service also keeps its own directly-reachable HTTP surface (Swagger included) for manual inspection;
 the saga itself never uses those, only a person poking at the system does.
 
 ## Running it
 
-The same platform, two deployment targets: `docker compose up` (the documented default — see the
+The same platform, two deployment targets: `docker compose up` (the documented default – see the
 [README](../README.md#running-it)) and a local Kubernetes cluster via the Helm chart (see
 [`docs/kubernetes.md`](kubernetes.md)). Both run identical images against identical configuration
 shapes; neither is a simplified stand-in for the other.

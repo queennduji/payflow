@@ -33,7 +33,7 @@ public sealed class AuthorizationAttempt : Entity<Guid>
 
     /// <summary>
     /// The saga's compensating action when a later step (Ledger posting) fails after this
-    /// authorization already succeeded. Idempotent — voiding an already-voided attempt is a no-op,
+    /// authorization already succeeded. Idempotent – voiding an already-voided attempt is a no-op,
     /// since the command that triggers it can be redelivered.
     /// </summary>
     public Result Void()

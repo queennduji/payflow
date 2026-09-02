@@ -24,7 +24,7 @@ public sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         });
         builder.Navigation(p => p.Amount).IsRequired();
 
-        // One payment per (merchant, idempotency key) — belt-and-suspenders alongside the
+        // One payment per (merchant, idempotency key) – belt-and-suspenders alongside the
         // dedicated IdempotencyRecord table, which is the actual dedup fast-path.
         builder.HasIndex(p => new { p.MerchantId, p.IdempotencyKey }).IsUnique();
 

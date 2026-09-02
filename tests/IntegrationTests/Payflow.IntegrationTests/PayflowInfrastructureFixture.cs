@@ -7,10 +7,10 @@ namespace Payflow.IntegrationTests;
 
 /// <summary>
 /// Owns the three real backing containers every integration test class needs: one Postgres
-/// *server* (each test class creates its own logical databases inside it — see
+/// *server* (each test class creates its own logical databases inside it – see
 /// <see cref="CreateDatabaseAsync"/>), one RabbitMQ broker, and one Keycloak instance importing the
 /// exact same realm the demo and docker-compose use, so there's only one place that realm is
-/// defined. This fixture starts them; it does not itself build any service host — each test class
+/// defined. This fixture starts them; it does not itself build any service host – each test class
 /// does that with <see cref="Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory{TEntryPoint}"/>,
 /// so different test classes can run the same services with different configuration (e.g. a
 /// cranked-up fault rate) without paying to restart these containers.
@@ -25,7 +25,7 @@ public sealed class PayflowInfrastructureFixture : IAsyncLifetime
     private readonly string _rabbitMqPassword = Guid.NewGuid().ToString("N");
 
     // RabbitMQ's built-in "guest" account only accepts connections that arrive over the loopback
-    // interface, as RabbitMQ itself sees it — which a container-to-host port mapping never counts
+    // interface, as RabbitMQ itself sees it – which a container-to-host port mapping never counts
     // as, even from 127.0.0.1. A non-guest account sidesteps that restriction entirely.
     private readonly RabbitMqContainer _rabbitMq;
 
@@ -47,7 +47,7 @@ public sealed class PayflowInfrastructureFixture : IAsyncLifetime
     public int RabbitMqPort => _rabbitMq.GetMappedPublicPort(5672);
     public string RabbitMqUsername => "payflow";
     public string RabbitMqPassword => _rabbitMqPassword;
-    // GetBaseAddress() already ends in a trailing slash — naively appending another segment here
+    // GetBaseAddress() already ends in a trailing slash – naively appending another segment here
     // produces a double slash, which makes the issuer string JwtBearer validates against not
     // match the token's actual (single-slash) `iss` claim.
     public string KeycloakAuthority => $"{_keycloak.GetBaseAddress().TrimEnd('/')}/realms/payflow";

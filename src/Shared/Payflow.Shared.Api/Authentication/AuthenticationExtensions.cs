@@ -24,7 +24,7 @@ public static class AuthenticationExtensions
             {
                 options.Authority = authority;
                 options.Audience = audience;
-                // Local demo runs Keycloak over plain HTTP — a real deployment never sets this.
+                // Local demo runs Keycloak over plain HTTP – a real deployment never sets this.
                 options.RequireHttpsMetadata = false;
             });
 

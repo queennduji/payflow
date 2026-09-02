@@ -8,7 +8,7 @@ metadata:
     {{- include "payflow.selectorLabels" . | nindent 4 }}
 spec:
   # Single replica everywhere: migrations run on startup (see each service's Program.cs), which
-  # would race across replicas — a documented Phase 1 simplification this chart doesn't change.
+  # would race across replicas – a documented Phase 1 simplification this chart doesn't change.
   replicas: 1
   selector:
     matchLabels:
@@ -21,7 +21,7 @@ spec:
       {{- if .dependsOnPostgres }}
       # docker-compose gates container start on `depends_on: condition: service_healthy`;
       # Kubernetes has no equivalent, so this waits out the same dependency before the app tries
-      # its (unretried) startup migration — see Program.cs's own db.Database.MigrateAsync() call.
+      # its (unretried) startup migration – see Program.cs's own db.Database.MigrateAsync() call.
       initContainers:
         - name: wait-for-deps
           image: busybox:1.36

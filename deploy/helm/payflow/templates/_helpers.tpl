@@ -8,7 +8,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 
 {{/*
 Labels that select a specific component's pods (used on both the Deployment/StatefulSet's
-selector and its pod template — must stay identical, hence factored out once).
+selector and its pod template – must stay identical, hence factored out once).
 */}}
 {{- define "payflow.selectorLabels" -}}
 app.kubernetes.io/name: {{ .name }}

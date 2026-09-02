@@ -11,7 +11,7 @@ public static class DependencyInjection
     public static IServiceCollection AddPaymentsInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // Registered via the factory (not AddDbContext) so IDbContextFactory<PaymentsDbContext> can
-        // also be Singleton-resolved cleanly — EfPaymentRepository.ReloadAsync uses it to read state
+        // also be Singleton-resolved cleanly – EfPaymentRepository.ReloadAsync uses it to read state
         // a different process/scope wrote, without the ambient request-scoped context's connection
         // potentially handing back a pinned-stale snapshot. The scoped PaymentsDbContext everything
         // else injects is created from the same factory.

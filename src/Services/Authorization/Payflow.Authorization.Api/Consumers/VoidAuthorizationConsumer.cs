@@ -5,7 +5,7 @@ using Payflow.Shared.Contracts.Messages;
 
 namespace Payflow.Authorization.Api.Consumers;
 
-/// <summary>Handles the saga's compensating transaction — see ADR-0005.</summary>
+/// <summary>Handles the saga's compensating transaction – see ADR-0005.</summary>
 public sealed class VoidAuthorizationConsumer(ISender sender) : IConsumer<VoidAuthorization>
 {
     public async Task Consume(ConsumeContext<VoidAuthorization> context)

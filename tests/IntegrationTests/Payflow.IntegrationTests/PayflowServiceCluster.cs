@@ -16,7 +16,7 @@ namespace Payflow.IntegrationTests;
 /// <summary>
 /// Boots the five saga-participant services in-process against the shared fixture's real
 /// Postgres/RabbitMQ/Keycloak, each on its own logical database. This is the "cluster" a test class
-/// talks to — built once per test class (not per fixture), so one class can run Authorization at
+/// talks to – built once per test class (not per fixture), so one class can run Authorization at
 /// its default 0% fault rate while another cranks it up, without restarting any container.
 /// Gateway isn't hosted here: it's a routing layer with nothing left to prove once the services it
 /// proxies to are already being exercised directly. Vault isn't a saga participant.
@@ -67,7 +67,7 @@ public sealed class PayflowServiceCluster : IAsyncDisposable
         // ASP.NET Core minimal APIs read configuration (here: Authentication:Authority, inside
         // AddPayflowAuthentication) synchronously while Program.cs's top-level statements run, well
         // before WebApplicationFactory's own ConfigureAppConfiguration customization is applied to
-        // the builder — that hook fires too late to affect a value already read into a local
+        // the builder – that hook fires too late to affect a value already read into a local
         // variable. Environment variables are loaded by WebApplication.CreateBuilder itself, so
         // they're visible from the very first line of Program.cs, which a plain config-override
         // callback can't guarantee for every value every service reads eagerly at startup.
@@ -97,7 +97,7 @@ public sealed class PayflowServiceCluster : IAsyncDisposable
             ["ConnectionStrings__NotificationsDb"] = notificationsDb,
         }, fixture, out var notificationsClient);
 
-        // Authorization and Fraud have no HTTP surface this test suite calls directly — they only
+        // Authorization and Fraud have no HTTP surface this test suite calls directly – they only
         // need to actually be running (migrated, bus connected) for the saga to reach them. Warming
         // them up here, rather than lazily, keeps every service's startup cost inside StartAsync.
         authorizationClient.Dispose();

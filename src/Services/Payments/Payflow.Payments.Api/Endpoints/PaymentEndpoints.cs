@@ -19,7 +19,7 @@ public static class PaymentEndpoints
             var result = await sender.Send(command, ct);
 
             // Completed: the saga finished within the wait window, respond exactly as Phase 1 did.
-            // Pending: still in flight (or the caller raced an existing attempt) — report 202 with
+            // Pending: still in flight (or the caller raced an existing attempt) – report 202 with
             // a Location the client can poll. See ADR-0006.
             return result.ToHttpResult(outcome => outcome switch
             {

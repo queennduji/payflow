@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds all six service images and loads them into the `payflow` kind cluster. kind can't pull
-# unpublished local images on its own, so every image built here has to be loaded explicitly —
+# unpublished local images on its own, so every image built here has to be loaded explicitly –
 # this is that step, not a substitute for it.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."

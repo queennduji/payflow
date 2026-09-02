@@ -8,7 +8,7 @@ using Polly.Testing;
 namespace Payflow.Authorization.UnitTests;
 
 /// <summary>
-/// Asserts the resilience policy's *shape* — retry count, backoff, circuit-breaker thresholds —
+/// Asserts the resilience policy's *shape* – retry count, backoff, circuit-breaker thresholds –
 /// via Polly's pipeline descriptor rather than by executing it, so these tests run in milliseconds
 /// instead of paying for real timeouts/backoff delays.
 /// </summary>
